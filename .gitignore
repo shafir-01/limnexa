@@ -14,3 +14,6 @@ spacetimedb/.github/
 spacetimedb/.windsurfrules
 spacetimedb/CLAUDE.md
 spacetimedb/AGENTS.md
+
+.vercel
+.env*
