@@ -1,0 +1,9 @@
+# Rules and policies
+
+Reducers execute deterministic, versioned checks against stored evidence and context. AI may propose fields or explanations but cannot set validation results, open or close an incident, or change a policy. Each execution saves a replayable trace with the exact policy snapshot and source evidence IDs. The incident route represents a need for investigation, not a diagnosis.
+
+Real policy activation requires an owner-configured canonical site, enrolled source lineage and a source title, URI, retrieval date, version and scoped policy assignment. A changed threshold creates a new version; historical traces keep the earlier parameters. Measurements must carry valid units and instrument context. GPS accuracy and site distance affect spatial integrity. Unknown or absent weather is not treated as zero rainfall. The Open-Meteo modelled provider stores a completed whole-hour interval and mm unit; it can support only a matching local policy window.
+
+The synthetic flagship scenario combines qualifying independent observations on one reach, stored qualifying weather and an explicitly synthetic wastewater policy to route an investigation. Independent groups are connected components: reports that share an enrolled lineage or copied media hash cannot double count, including transitive chains. The synthetic ecological control uses a declared dissolved-oxygen instrument reading and routes scientific review, with no public-health escalation. Neither synthetic parameter set is a standard for a real waterway.
+
+The [domain model](DOMAIN_MODEL.md) lists the trust dimensions and state machine. The [demo script](DEMO.md) shows both routes and historical replay. Operators configure real sources and policies using the owner-only commands in the [runbook](OPERATIONS_RUNBOOK.md).

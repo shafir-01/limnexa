@@ -1,5 +1,7 @@
 # Architecture
 
+The five planes are capture (citizen PWA and private media), operational truth (SpacetimeDB reducers and scoped views), deterministic intelligence (validation, policy and replay), accountable action (incident state machine, monitoring and outbox), and interoperability/assistance (FHIR, optional providers and external delivery). Only the operational truth plane can commit evidence or decisions.
+
 ```mermaid
 flowchart LR
   Citizen[Citizen PWA / IndexedDB] -->|authenticated reducers| DB[SpacetimeDB private tables]
