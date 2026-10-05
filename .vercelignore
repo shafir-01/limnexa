@@ -1,0 +1,10 @@
+.tools/
+.env*
+.git/
+.next/
+node_modules/
+spacetimedb/
+tests/
+standards/
+docs/
+*.tsbuildinfo
