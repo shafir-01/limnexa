@@ -1,0 +1,17 @@
+{
+  "database": "limnexa-jltls-preview",
+  "runId": "test-1791208817445",
+  "incidentId": "inc-025be4515c6ebfb1a355d0b8",
+  "status": "passed",
+  "checks": [
+    "unauthorized transition denied",
+    "private views scoped",
+    "retry idempotent",
+    "append-only correction",
+    "confirmation requires finding",
+    "action requires intervention",
+    "closure requires verified follow-up",
+    "negative ecological routing",
+    "inbox delivery idempotent"
+  ]
+}

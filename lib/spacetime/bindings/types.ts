@@ -216,6 +216,13 @@ export const Outbox = __t.object("Outbox", {
 });
 export type Outbox = __Infer<typeof Outbox>;
 
+export const PolicyAssignment = __t.object("PolicyAssignment", {
+  id: __t.string(),
+  siteId: __t.string(),
+  policyKey: __t.string(),
+});
+export type PolicyAssignment = __Infer<typeof PolicyAssignment>;
+
 export const PolicyRecord = __t.object("PolicyRecord", {
   id: __t.string(),
   payload: __t.string(),
@@ -294,6 +301,17 @@ export type ServiceIncidents = __Infer<typeof ServiceIncidents>;
 
 export const ServiceOutbox = __t.object("ServiceOutbox", {});
 export type ServiceOutbox = __Infer<typeof ServiceOutbox>;
+
+export const ServiceSites = __t.object("ServiceSites", {});
+export type ServiceSites = __Infer<typeof ServiceSites>;
+
+export const SourceRegistration = __t.object("SourceRegistration", {
+  identity: __t.identity(),
+  lineage: __t.string(),
+  reason: __t.string(),
+  at: __t.timestamp(),
+});
+export type SourceRegistration = __Infer<typeof SourceRegistration>;
 
 export const ValidationRecord = __t.object("ValidationRecord", {
   id: __t.string(),

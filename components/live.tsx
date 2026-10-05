@@ -22,6 +22,7 @@ export function LiveEvidence(){
 }
 type Incident={id:string;site:string;state:string;policyId:string;evidenceIds:string;trace:string;synthetic:boolean};
 function IncidentControls({incident}:{incident:Incident}){
+  const {token}=useSpacetimeDB();
   const advance=useReducer(reducers.advanceIncident),finding=useReducer(reducers.recordFinding),intervene=useReducer(reducers.recordIntervention);
   const [reason,setReason]=useState(''),[proof,setProof]=useState(''),[rationale,setRationale]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
   async function move(toState:string){
@@ -31,6 +32,7 @@ function IncidentControls({incident}:{incident:Incident}){
       if(toState==='CONFIRMED'){recordId=crypto.randomUUID();await finding({id:recordId,incidentId:incident.id,evidenceIds:incident.evidenceIds,description:proof})}
       if(toState==='ACTIONED'){recordId=crypto.randomUUID();await intervene({id:recordId,incidentId:incident.id,description:proof})}
       await advance({incidentId:incident.id,toState,reason,recordId,closureRationale:rationale});
+      if(token)void fetch('/api/workflows/outbox/trigger',{method:'POST',headers:{authorization:`Bearer ${token}`}}).catch(()=>{});
       setReason('');setProof('');setRationale('');setMessage(`Recorded ${toState}.`);
     }catch{setMessage('Transition rejected. Check the reason, supporting record, and required evidence.')}
     finally{setBusy(false)}
@@ -44,14 +46,15 @@ export function IdentityPanel(){
 }
 export function LiveOperations(){
   const [demo,ready]=useTable(tables.demoIncidents),[privateIncidents]=useTable(tables.operationsIncidents),[roles]=useTable(tables.myRole),[events]=useTable(tables.operationsEvents),[tasks]=useTable(tables.myTasks),[deliveries]=useTable(tables.demoDeliveries);
-  const canAct=roles[0]?.kind==='officer';
+  const canAct=['officer','admin'].includes(roles[0]?.kind||'');
   const incidents:readonly Incident[]=privateIncidents.length?privateIncidents.filter(i=>i.policyId!=='synthetic-wastewater-v1'):demo;
   return <><ConnectionStatus/><IdentityPanel/>{tasks.length>0&&<section><h2>My responsibility inbox</h2>{tasks.map(t=><p key={t.idempotencyKey}>{t.route} · {t.incidentId} · {t.status}{t.synthetic?' · synthetic':''}</p>)}</section>}<div className="list">{!ready&&<p>Loading incident records…</p>}{incidents.map(i=>{
     const trace=JSON.parse(i.trace) as Trace;
     return <article className="two" key={i.id}><div className="card"><div className="section-head"><h2>{i.site}</h2><span className="badge warn">{i.state.replaceAll('_',' ')}</span></div><span className="badge">{i.synthetic?'Synthetic':'Operational'} · {trace.route}</span><h3>Why this was routed</h3><div className="timeline">{trace.conditions.map(c=><article key={c.code}><h3>{c.passed?'Pass':'Not met'} · {c.code.replaceAll('_',' ')}</h3><p>{c.detail}</p></article>)}</div>{trace.outcome==='ECOLOGICAL_REVIEW'&&<p className="notice">Instrument evidence met the synthetic ecological review condition. This event is routed to an ecological scientist, with no health emergency claim.</p>}{canAct&&<IncidentControls incident={i}/>}</div><aside className="card"><h3>Decision record</h3><p><b>Policy:</b> {trace.policy.id} v{trace.policy.version}</p><p><b>Source:</b> {trace.policy.source.title}</p><p><b>Rule:</b> {trace.ruleVersion}</p><p><b>Independent groups:</b> {trace.independentLineages}</p><p><b>Evidence:</b> {trace.evidenceIds.join(', ')}</p><p className="small muted">Trace {trace.id}<br/>Executed {trace.executedAt}</p><p className="small">Investigation required is not a contamination diagnosis.</p><Link className="quiet-button" href={`/interoperability?incident=${encodeURIComponent(i.id)}`}>Inspect export</Link><h3>Delivery status</h3>{deliveries.filter(d=>d.aggregateId===i.id).map(d=><p className="small" key={d.id.toString()}>{d.kind} · {d.status}</p>)}{events.filter(e=>e.incidentId===i.id).map(e=><p className="small" key={e.id.toString()}>{e.fromState} → {e.toState}: {e.reason}</p>)}</aside></article>})}</div></>;
 }
 export function LiveMonitoring(){
+  const refresh=useReducer(reducers.refreshMonitoring),[roles]=useTable(tables.myRole),[message,setMessage]=useState('');
   const [missions,ready]=useTable(tables.demoMissions),[privateMissions]=useTable(tables.operationsMissions);
   const rows=privateMissions.length?privateMissions:missions;
-  return <><ConnectionStatus/><div className="list">{!ready&&<p>Loading missions…</p>}{ready&&!rows.length&&<p className="notice">No follow-up missions yet. An officer moving an incident to FOLLOW UP creates a targeted request through the authoritative reducer.</p>}{rows.map(m=><article className="card" key={m.id}><span className="badge blue">{m.synthetic?'Synthetic · ':''}{m.state}</span><h2>Revisit {m.site}</h2><p>{m.rationale}</p><p className="small">Mission {m.id} · Incident {m.incidentId}</p><Link className="quiet-button" href={`/report?mission=${encodeURIComponent(m.id)}&site=${encodeURIComponent(m.site)}`}>Collect follow-up evidence</Link><p className="muted small">A before/after pair cannot establish causation. Closure records an operational outcome with its evidence or an explicit authorized rationale.</p></article>)}</div></>;
+  return <><ConnectionStatus/>{['officer','admin'].includes(roles[0]?.kind||'')&&<button className="quiet-button" onClick={async()=>{try{await refresh();setMessage('Monitoring gaps refreshed from current evidence and assigned policies.')}catch{setMessage('Monitoring refresh was rejected.')}}}>Refresh evidence gaps</button>}{message&&<p role="status">{message}</p>}<div className="list">{!ready&&<p>Loading missions…</p>}{ready&&!rows.length&&<p className="notice">No follow-up missions yet. An officer moving an incident to FOLLOW UP creates a targeted request through the authoritative reducer.</p>}{rows.map(m=><article className="card" key={m.id}><span className="badge blue">{m.synthetic?'Synthetic · ':''}{m.state}</span><h2>Revisit {m.site}</h2><p>{m.rationale}</p><p className="small">Mission {m.id}{m.incidentId?` · Incident ${m.incidentId}`:' · Adaptive evidence gap'}</p>{m.state==='open'&&<Link className="quiet-button" href={`/report?mission=${encodeURIComponent(m.id)}&site=${encodeURIComponent(m.site)}`}>Collect follow-up evidence</Link>}<p className="muted small">A before/after pair cannot establish causation. Closure records an operational outcome with its evidence or an explicit authorized rationale.</p></article>)}</div></>;
 }

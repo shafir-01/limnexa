@@ -5,7 +5,7 @@ import path from 'node:path';
 import {DbConnection} from '../lib/spacetime/bindings';
 import type {Identity} from 'spacetimedb';
 
-const database=process.argv[2];
+const database=process.argv[2]||'';
 const environment=process.argv[3];
 if(!database||!['preview','production'].includes(environment||''))throw new Error('Usage: tsx scripts/provision-service.ts DATABASE preview|production');
 function connect(token?:string){return new Promise<{conn:DbConnection;token:string;identity:Identity}>((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Connection timed out')),15000);DbConnection.builder().withUri('wss://maincloud.spacetimedb.com').withDatabaseName(database).withToken(token).onConnect((conn,identity,issuedToken)=>{clearTimeout(timer);resolve({conn,token:issuedToken,identity})}).onConnectError(()=>{clearTimeout(timer);reject(new Error('Connection failed'))}).build()})}

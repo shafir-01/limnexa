@@ -39,16 +39,23 @@ import AppendRevisionReducer from "./append_revision_reducer";
 import ClaimOutboxReducer from "./claim_outbox_reducer";
 import CompleteAssistanceReducer from "./complete_assistance_reducer";
 import CompleteDeliveryReducer from "./complete_delivery_reducer";
+import ConfigurePolicyReducer from "./configure_policy_reducer";
+import ConfigureSiteReducer from "./configure_site_reducer";
 import CreateReportReducer from "./create_report_reducer";
 import DeliverTaskReducer from "./deliver_task_reducer";
+import FlagAcknowledgementTimeoutReducer from "./flag_acknowledgement_timeout_reducer";
 import GrantRoleReducer from "./grant_role_reducer";
 import RecordExpertVerificationReducer from "./record_expert_verification_reducer";
 import RecordFindingReducer from "./record_finding_reducer";
 import RecordInterventionReducer from "./record_intervention_reducer";
+import RefreshMonitoringReducer from "./refresh_monitoring_reducer";
 import RegisterMediaReducer from "./register_media_reducer";
+import RegisterSourceReducer from "./register_source_reducer";
+import RequestFhirExportReducer from "./request_fhir_export_reducer";
 import ReserveAssistanceReducer from "./reserve_assistance_reducer";
 import SeedDemoReducer from "./seed_demo_reducer";
 import SeedFlagshipReducer from "./seed_flagship_reducer";
+import SeedScenarioReducer from "./seed_scenario_reducer";
 import SubmitObservationReducer from "./submit_observation_reducer";
 import TransitionIncidentReducer from "./transition_incident_reducer";
 
@@ -78,6 +85,7 @@ import ScienceValidationRow from "./science_validation_table";
 import ServiceEvidenceRow from "./service_evidence_table";
 import ServiceIncidentsRow from "./service_incidents_table";
 import ServiceOutboxRow from "./service_outbox_table";
+import ServiceSitesRow from "./service_sites_table";
 
 /** Type-only namespace exports for generated type groups. */
 
@@ -244,6 +252,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, ServiceOutboxRow),
+  serviceSites: __table({
+    name: 'service_sites',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ServiceSitesRow),
 });
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
@@ -253,16 +268,23 @@ const reducersSchema = __reducers(
   __reducerSchema("claim_outbox", ClaimOutboxReducer),
   __reducerSchema("complete_assistance", CompleteAssistanceReducer),
   __reducerSchema("complete_delivery", CompleteDeliveryReducer),
+  __reducerSchema("configure_policy", ConfigurePolicyReducer),
+  __reducerSchema("configure_site", ConfigureSiteReducer),
   __reducerSchema("create_report", CreateReportReducer),
   __reducerSchema("deliver_task", DeliverTaskReducer),
+  __reducerSchema("flag_acknowledgement_timeout", FlagAcknowledgementTimeoutReducer),
   __reducerSchema("grant_role", GrantRoleReducer),
   __reducerSchema("record_expert_verification", RecordExpertVerificationReducer),
   __reducerSchema("record_finding", RecordFindingReducer),
   __reducerSchema("record_intervention", RecordInterventionReducer),
+  __reducerSchema("refresh_monitoring", RefreshMonitoringReducer),
   __reducerSchema("register_media", RegisterMediaReducer),
+  __reducerSchema("register_source", RegisterSourceReducer),
+  __reducerSchema("request_fhir_export", RequestFhirExportReducer),
   __reducerSchema("reserve_assistance", ReserveAssistanceReducer),
   __reducerSchema("seed_demo", SeedDemoReducer),
   __reducerSchema("seed_flagship", SeedFlagshipReducer),
+  __reducerSchema("seed_scenario", SeedScenarioReducer),
   __reducerSchema("submit_observation", SubmitObservationReducer),
   __reducerSchema("transition_incident", TransitionIncidentReducer),
 );

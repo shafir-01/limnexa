@@ -15,10 +15,13 @@ export const reportSchema = z.object({
   missionId:z.string().max(100),
 }).strict();
 export type ReportInput = z.infer<typeof reportSchema>;
-export type Evidence = ReportInput & { ownerId:string; sourceLineageId:string; synthetic:boolean; kind:'citizen-report'|'instrument-measurement'; submittedAt:string; contentHash:string };
+export const siteSchema=z.object({id:z.string().min(3).max(120),name:z.string().min(3).max(200),cityId:z.string().min(3).max(120),catchmentId:z.string().min(3).max(120),streamId:z.string().min(3).max(120),reachId:z.string().min(3).max(120),latitude:z.number().min(-90).max(90),longitude:z.number().min(-180).max(180),synthetic:z.boolean()}).strict();
+export type SiteInput=z.infer<typeof siteSchema>;
+export type Evidence = ReportInput & { ownerId:string; sourceLineageId:string; sourceVerified?:boolean; siteDistanceM?:number; synthetic:boolean; kind:'citizen-report'|'instrument-measurement'; submittedAt:string; contentHash:string };
 export type Assertion = { dimension:string; status:'pass'|'warn'|'fail'|'unknown'|'not_applicable'; code:string; details:Record<string,string|number|boolean>; validatorVersion:string };
 export type Validation = { evidenceId:string; assertions:Assertion[]; eligible:boolean; eligibility:'usable_for_rule_evaluation'|'requires_review'|'rejected_for_analysis'; version:string };
 export type Policy = { id:string; version:string; status:'synthetic-demonstration'|'configured-local'; synthetic:boolean; source:{title:string;uri:string;retrievedAt:string}; minIndependent:number; windowMinutes:number; maxGpsAccuracyM:number; rainMinimumMm:number; ecologicalOxygenMaximumMgL:number };
+export const policySchema=z.object({id:z.string().min(3).max(100),version:z.string().regex(/^\d+\.\d+\.\d+$/),status:z.enum(['synthetic-demonstration','configured-local']),synthetic:z.boolean(),source:z.object({title:z.string().min(10).max(500),uri:z.string().url(),retrievedAt:z.string().date()}),minIndependent:z.number().int().min(2).max(100),windowMinutes:z.number().int().min(1).max(10080),maxGpsAccuracyM:z.number().positive().max(10000),rainMinimumMm:z.number().nonnegative().finite(),ecologicalOxygenMaximumMgL:z.number().nonnegative().finite()}).strict().refine(p=>p.synthetic===(p.status==='synthetic-demonstration'),'Policy status must match synthetic flag');
 export type Weather = { id:string; siteId:string; observedAt:string; precipitationMm:number; synthetic:boolean; source:string; methodVersion:string };
 export type Trace = { id:string; ruleVersion:string; policy:Policy; executedAt:string; evidenceIds:string[]; weatherIds:string[]; conditions:{code:string;passed:boolean;detail:string}[]; independentLineages:number; outcome:'INVESTIGATION_REQUIRED'|'ECOLOGICAL_REVIEW'|'INSUFFICIENT_EVIDENCE'; route:'environmental-officer'|'ecological-scientist'|'none' };
 export const DEMO_POLICY:Policy={id:'LIMNEXA_DEMO_POLICY_V1',version:'1.0.0',status:'synthetic-demonstration',synthetic:true,source:{title:'Synthetic demonstration parameters; not environmental standards',uri:'https://limnexa.example/policies/synthetic-v1',retrievedAt:'2026-10-05'},minIndependent:2,windowMinutes:120,maxGpsAccuracyM:100,rainMinimumMm:5,ecologicalOxygenMaximumMgL:4};
@@ -29,13 +32,14 @@ export function canonical(value:unknown):string {
   return `{${Object.entries(value).sort(([a],[b])=>a<b?-1:a>b?1:0).map(([key,item])=>`${JSON.stringify(key)}:${canonical(item)}`).join(',')}}`;
 }
 export function contentHash(value:unknown):string{return bytesToHex(sha256(new TextEncoder().encode(canonical(value))));}
-export function makeEvidence(input:unknown,actor:{identity:string;lineage:string;synthetic:boolean},now:string):Evidence {
+export function distanceMeters(a:{latitude:number;longitude:number},b:{latitude:number;longitude:number}):number{const rad=Math.PI/180,dlat=(a.latitude-b.latitude)*rad,dlon=(a.longitude-b.longitude)*rad,h=Math.sin(dlat/2)**2+Math.cos(a.latitude*rad)*Math.cos(b.latitude*rad)*Math.sin(dlon/2)**2;return 6371000*2*Math.atan2(Math.sqrt(h),Math.sqrt(Math.max(0,1-h)));}
+export function makeEvidence(input:unknown,actor:{identity:string;lineage:string;synthetic:boolean;sourceVerified?:boolean;siteDistanceM?:number},now:string):Evidence {
   const report=reportSchema.parse(input);
   if(report.supersedesId&&!report.correctionReason.trim())throw new Error('REVISION_REASON_REQUIRED');
-  const body={...report,ownerId:actor.identity,sourceLineageId:actor.lineage,synthetic:actor.synthetic,kind:report.measurement?'instrument-measurement' as const:'citizen-report' as const,submittedAt:now};
+  const body={...report,ownerId:actor.identity,sourceLineageId:actor.lineage,sourceVerified:actor.sourceVerified??actor.synthetic,...(actor.siteDistanceM!==undefined?{siteDistanceM:actor.siteDistanceM}:{}),synthetic:actor.synthetic,kind:report.measurement?'instrument-measurement' as const:'citizen-report' as const,submittedAt:now};
   return {...body,contentHash:contentHash(body)};
 }
-export function validateEvidence(e:Evidence,now:string,policy:Policy):Validation {
+export function validateEvidence(e:Evidence,now:string,policy:Pick<Policy,'windowMinutes'|'maxGpsAccuracyM'>):Validation {
   const assertion=(dimension:string,status:Assertion['status'],code:string,details:Assertion['details']={}):Assertion=>({dimension,status,code,details,validatorVersion:VALIDATOR_VERSION});
   const observed=Date.parse(e.observedAt),executed=Date.parse(now),ageMinutes=(executed-observed)/60000;
   const measure=e.measurement;
@@ -44,17 +48,17 @@ export function validateEvidence(e:Evidence,now:string,policy:Policy):Validation
   const assertions:Assertion[]=[
     assertion('acquisition_quality','pass',measure?'DECLARED_INSTRUMENT_MEASUREMENT':'DIRECT_CITIZEN_REPORT'),
     assertion('protocol_adherence',e.protocolVersion==='field-v1'?'pass':'fail','PROTOCOL_FIELD_V1'),
-    assertion('spatial_integrity',e.gpsAccuracyM===null?'warn':e.gpsAccuracyM<=policy.maxGpsAccuracyM?'pass':'warn',e.gpsAccuracyM===null?'GPS_ACCURACY_UNKNOWN':'GPS_ACCURACY_RECORDED',{siteId:e.siteId,reachId:e.reachId,accuracyM:e.gpsAccuracyM??-1}),
+    assertion('spatial_integrity',e.gpsAccuracyM===null||e.gpsAccuracyM>policy.maxGpsAccuracyM||(e.siteDistanceM??0)>policy.maxGpsAccuracyM?'warn':'pass',e.gpsAccuracyM===null?'GPS_ACCURACY_UNKNOWN':(e.siteDistanceM??0)>policy.maxGpsAccuracyM?'OUTSIDE_CONFIGURED_SITE_RADIUS':'GPS_ACCURACY_RECORDED',{siteId:e.siteId,reachId:e.reachId,accuracyM:e.gpsAccuracyM??-1,siteDistanceM:e.siteDistanceM??-1}),
     assertion('temporal_integrity',ageMinutes< -5?'fail':ageMinutes>policy.windowMinutes?'warn':'pass',ageMinutes< -5?'FUTURE_TIME':ageMinutes>policy.windowMinutes?'STALE_FOR_POLICY':'TIME_WITHIN_WINDOW',{ageMinutes}),
     assertion('instrument_integrity',!measure?'not_applicable':measure.unit!==expectedUnit?'fail':Date.parse(measure.calibrationDate)>observed?'fail':'pass',!measure?'NO_INSTRUMENT_CLAIM':measure.unit!==expectedUnit?'UNIT_MISMATCH':'CALIBRATION_RECORDED'),
     assertion('physical_plausibility',physical?'pass':'fail',physical?'BROAD_DATA_BOUNDS_PASS':'IMPOSSIBLE_VALUE'),
     assertion('completeness','pass','REQUIRED_FIELDS_PRESENT'),
     assertion('corroboration','unknown','RULE_CHECKS_INDEPENDENT_LINEAGE'),
     assertion('media_support',e.mediaHashes.length?'unknown':'not_applicable',e.mediaHashes.length?'MEDIA_REQUIRES_VISIBLE_FEATURE_REVIEW':'NO_MEDIA'),
-    assertion('provenance_completeness',e.contentHash===contentHash(Object.fromEntries(Object.entries(e).filter(([key])=>key!=='contentHash')))?'pass':'fail','CONTENT_HASH_INTEGRITY'),
+    assertion('provenance_completeness',e.contentHash!==contentHash(Object.fromEntries(Object.entries(e).filter(([key])=>key!=='contentHash')))?'fail':e.synthetic||e.sourceVerified?'pass':'warn',e.synthetic||e.sourceVerified?'CONTENT_HASH_AND_SOURCE_LINEAGE':'UNVERIFIED_CONTRIBUTOR_LINEAGE'),
   ];
-  const failed=assertions.some(a=>a.status==='fail'),stale=assertions.some(a=>a.code==='STALE_FOR_POLICY');
-  return {evidenceId:e.id,assertions,eligible:!failed&&!stale,eligibility:failed?'rejected_for_analysis':stale?'requires_review':'usable_for_rule_evaluation',version:VALIDATOR_VERSION};
+  const failed=assertions.some(a=>a.status==='fail'),reviewRequired=assertions.some(a=>a.code==='STALE_FOR_POLICY'||a.dimension==='spatial_integrity'&&a.status==='warn');
+  return {evidenceId:e.id,assertions,eligible:!failed&&!reviewRequired,eligibility:failed?'rejected_for_analysis':reviewRequired?'requires_review':'usable_for_rule_evaluation',version:VALIDATOR_VERSION};
 }
 export function latestEvidence(evidence:Evidence[]):Evidence[]{
   const superseded=new Set(evidence.map(e=>e.supersedesId).filter(Boolean));
@@ -73,7 +77,7 @@ export function independentGroups(evidence:Evidence[]):number {
   return new Set(parents.map((_,i)=>root(i))).size;
 }
 export function evaluate(evidence:Evidence[],weather:Weather[],policy:Policy,siteId:string,now:string):Trace {
-  const candidates=latestEvidence(evidence).filter(e=>e.siteId===siteId&&e.synthetic===policy.synthetic&&validateEvidence(e,now,policy).eligible);
+  const candidates=latestEvidence(evidence).filter(e=>e.siteId===siteId&&e.synthetic===policy.synthetic&&(e.synthetic||e.sourceVerified===true)&&validateEvidence(e,now,policy).eligible);
   const wastewater=candidates.filter(e=>e.category==='wastewater-indicator');
   const independent=independentGroups(wastewater);
   const context=weather.filter(w=>w.siteId===siteId&&w.synthetic===policy.synthetic&&Date.parse(w.observedAt)<=Date.parse(now)&&Date.parse(now)-Date.parse(w.observedAt)<=policy.windowMinutes*60000);

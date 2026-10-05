@@ -1,5 +1,6 @@
 import { schema, table, t, type ReducerCtx, type ViewCtx } from 'spacetimedb/server';
-import { DEMO_POLICY, assertTransition, contentHash, evaluate, makeEvidence, reportSchema, validateEvidence, type Evidence, type IncidentState, type Policy, type ReportInput, type Trace, type Weather } from '../../../lib/domain/core';
+import { DEMO_POLICY, assertTransition, contentHash, distanceMeters, evaluate, independentGroups, latestEvidence, makeEvidence, policySchema, reportSchema, validateEvidence, type Evidence, type IncidentState, type Policy, type ReportInput, type Trace, type Weather } from '../../../lib/domain/core';
+import {z} from 'zod';
 
 // Public identity, never a secret. The Maincloud owner alone grants roles.
 const OWNER = 'c2002c4df62abb104ebc5c17d8a33e16808b5e1fb80ddf845b7fd5d99e6d5dbc';
@@ -39,7 +40,9 @@ const mediaArtifact = table({name:'media_artifact'},{id:t.string().primaryKey(),
 const monitoringSite=table({name:'monitoring_site'},{id:t.string().primaryKey(),name:t.string(),cityId:t.string(),catchmentId:t.string(),streamId:t.string(),reachId:t.string(),latitude:t.f64(),longitude:t.f64(),synthetic:t.bool()});
 const routedTask=table({name:'routed_task'},{idempotencyKey:t.string().primaryKey(),incidentId:t.string(),route:t.string(),status:t.string(),synthetic:t.bool(),at:t.timestamp()});
 const assistance=table({name:'assistance'},{id:t.string().primaryKey(),owner:t.identity(),purpose:t.string(),model:t.string(),inputHash:t.string(),status:t.string(),payload:t.string(),at:t.timestamp()});
-const db = schema({ role, observation, incident, incidentEvent, outbox, mission,evidenceRecord,validationRecord,policyRecord,weatherContext,ruleExecution,finding,intervention,verification,delivery,mediaArtifact,monitoringSite,routedTask,assistance });
+const policyAssignment=table({name:'policy_assignment'},{id:t.string().primaryKey(),siteId:t.string(),policyKey:t.string()});
+const sourceRegistration=table({name:'source_registration'},{identity:t.identity().primaryKey(),lineage:t.string(),reason:t.string(),at:t.timestamp()});
+const db = schema({ role, observation, incident, incidentEvent, outbox, mission,evidenceRecord,validationRecord,policyRecord,weatherContext,ruleExecution,finding,intervention,verification,delivery,mediaArtifact,monitoringSite,routedTask,assistance,policyAssignment,sourceRegistration });
 export default db;
 type Context=ReducerCtx<typeof db.schemaType>;
 
@@ -50,7 +53,7 @@ const owner = (ctx: { sender: { toHexString(): string } }) => ctx.sender.toHexSt
 const officer = (ctx: Context | ViewCtx<typeof db.schemaType>) => owner(ctx) || ctx.db.role.identity.find(ctx.sender)?.kind === 'officer';
 function clean(value: string, max: number): string { const v=value.trim(); if (!v || v.length>max) throw new Error('VALIDATION_ERROR'); return v; }
 
-export const myRole = db.view({ name:'my_role', public:true },t.option(role.rowType),ctx=>ctx.db.role.identity.find(ctx.sender)??undefined);
+export const myRole = db.view({ name:'my_role', public:true },t.option(role.rowType),ctx=>owner(ctx)?{identity:ctx.sender,kind:'admin'}:ctx.db.role.identity.find(ctx.sender)??undefined);
 export const myObservations = db.view({ name:'my_observations', public:true },t.array(observation.rowType),ctx=>[...ctx.db.observation.iter()].filter(o=>o.owner.toHexString()===ctx.sender.toHexString()));
 export const reviewObservations = db.view({ name:'review_observations', public:true },t.array(observation.rowType),ctx=>officer(ctx)?[...ctx.db.observation.iter()]:[]);
 export const operationsIncidents = db.view({ name:'operations_incidents', public:true },t.array(incident.rowType),ctx=>officer(ctx)?[...ctx.db.incident.iter()]:[]);
@@ -76,7 +79,7 @@ const DemoEvidenceRow=t.row('DemoEvidenceRow',{id:t.string().primaryKey(),siteId
 const DemoDeliveryRow=t.row('DemoDeliveryRow',{id:t.u64().primaryKey(),kind:t.string(),aggregateId:t.string(),status:t.string()});
 export const demoEvidence=db.anonymousView({name:'demo_evidence',public:true},t.array(DemoEvidenceRow),ctx=>[...ctx.db.evidenceRecord.iter()].filter(r=>r.synthetic).map(r=>{
   const e=JSON.parse(r.payload) as Evidence;
-  return {id:e.id,siteId:e.siteId,reachId:e.reachId,description:e.description,category:e.category,observedAt:e.observedAt,latitude:e.latitude,longitude:e.longitude,sourceLineageId:e.sourceLineageId,kind:e.kind,synthetic:true,contentHash:e.contentHash,validation:ctx.db.validationRecord.id.find(`validation-${e.id}`)?.payload??'{}'};
+  return {id:e.id,siteId:e.siteId,reachId:e.reachId,description:e.description,category:e.category,observedAt:e.observedAt,latitude:e.latitude,longitude:e.longitude,sourceLineageId:contentHash(e.sourceLineageId).slice(0,20),kind:e.kind,synthetic:true,contentHash:e.contentHash,validation:ctx.db.validationRecord.id.find(`validation-${e.id}`)?.payload??'{}'};
 }));
 export const demoIncidents=db.anonymousView({name:'demo_incidents',public:true},t.array(PublicIncident),ctx=>[...ctx.db.incident.iter()].filter(i=>i.synthetic&&i.policyId===DEMO_POLICY.id).map(i=>({id:i.id,site:i.site,state:i.state,policyId:i.policyId,evidenceIds:i.evidenceIds,trace:i.trace,synthetic:true})));
 export const demoMissions=db.anonymousView({name:'demo_missions',public:true},t.array(mission.rowType),ctx=>[...ctx.db.mission.iter()].filter(m=>m.synthetic));
@@ -90,6 +93,7 @@ export const scienceValidation=db.view({name:'science_validation',public:true},t
 export const serviceOutbox=db.view({name:'service_outbox',public:true},t.array(outbox.rowType),ctx=>ctx.db.role.identity.find(ctx.sender)?.kind==='service'?[...ctx.db.outbox.iter()].filter(o=>ctx.db.incident.id.find(o.aggregateId)?.policyId!==POLICY):[]);
 export const serviceIncidents=db.view({name:'service_incidents',public:true},t.array(incident.rowType),ctx=>ctx.db.role.identity.find(ctx.sender)?.kind==='service'?[...ctx.db.incident.iter()]:[]);
 export const serviceEvidence=db.view({name:'service_evidence',public:true},t.array(evidenceRecord.rowType),ctx=>ctx.db.role.identity.find(ctx.sender)?.kind==='service'?[...ctx.db.evidenceRecord.iter()]:[]);
+export const serviceSites=db.view({name:'service_sites',public:true},t.array(monitoringSite.rowType),ctx=>ctx.db.role.identity.find(ctx.sender)?.kind==='service'?[...ctx.db.monitoringSite.iter()]:[]);
 export const demoTasks=db.anonymousView({name:'demo_tasks',public:true},t.array(routedTask.rowType),ctx=>[...ctx.db.routedTask.iter()].filter(task=>task.synthetic));
 export const myTasks=db.view({name:'my_tasks',public:true},t.array(routedTask.rowType),ctx=>{
   const kind=ctx.db.role.identity.find(ctx.sender)?.kind;
@@ -104,7 +108,7 @@ function persistEvidence(ctx:Context,untrusted:unknown,synthetic:boolean,lineage
   const existing=ctx.db.evidenceRecord.id.find(input.id);
   if(existing){
     const e=JSON.parse(existing.payload) as Evidence;
-    const {ownerId:ignoredOwner,sourceLineageId:ignoredLineage,synthetic:ignoredSynthetic,kind:ignoredKind,submittedAt:ignoredTime,contentHash:ignoredHash,...raw}=e;
+    const raw=reportSchema.strip().parse(e);
     if(existing.owner.toHexString()!==ctx.sender.toHexString()||contentHash(raw)!==contentHash(input))throw new Error('CONFLICT');
     return e;
   }
@@ -116,8 +120,16 @@ function persistEvidence(ctx:Context,untrusted:unknown,synthetic:boolean,lineage
     if([...ctx.db.evidenceRecord.iter()].some(r=>(JSON.parse(r.payload) as Evidence).supersedesId===input.supersedesId))throw new Error('REVISION_CONFLICT');
     lineage=original.sourceLineageId;
   }
-  const e=makeEvidence(input,{identity:ctx.sender.toHexString(),lineage,synthetic},ctx.timestamp.toISOString());
-  const v=validateEvidence(e,ctx.timestamp.toISOString(),DEMO_POLICY);
+  const registration=ctx.db.sourceRegistration.identity.find(ctx.sender);
+  if(!synthetic&&registration)lineage=registration.lineage;
+  const site=ctx.db.monitoringSite.id.find(input.siteId);if(!site||site.reachId!==input.reachId)throw new Error('SITE_RESOLUTION_REQUIRED');
+  const e=makeEvidence(input,{identity:ctx.sender.toHexString(),lineage,synthetic,sourceVerified:synthetic||!!registration,siteDistanceM:distanceMeters(input,site)},ctx.timestamp.toISOString());
+  // Capture integrity has no scientific freshness threshold when no local
+  // policy is assigned. Rule evaluation always revalidates using its policy.
+  const assigned=[...ctx.db.policyAssignment.iter()].find(a=>a.siteId===e.siteId);
+  const localPolicy=assigned?ctx.db.policyRecord.id.find(assigned.policyKey):null;
+  const qualityPolicy=synthetic?DEMO_POLICY:localPolicy?JSON.parse(localPolicy.payload) as Policy:{windowMinutes:Number.MAX_SAFE_INTEGER,maxGpsAccuracyM:10000};
+  const v=validateEvidence(e,ctx.timestamp.toISOString(),qualityPolicy);
   ctx.db.evidenceRecord.insert({id:e.id,owner:ctx.sender,siteId:e.siteId,synthetic,payload:JSON.stringify(e),contentHash:e.contentHash});
   ctx.db.validationRecord.insert({id:`validation-${e.id}`,evidenceId:e.id,eligible:v.eligible,payload:JSON.stringify(v),at:ctx.timestamp});
   return e;
@@ -144,7 +156,7 @@ export const createReport=db.reducer({payload:t.string()},(ctx,{payload})=>{
   const e=persistEvidence(ctx,input,site.synthetic,ctx.sender.toHexString());
   if(site.synthetic){ensurePolicy(ctx);runPolicy(ctx,e.siteId,DEMO_POLICY);return;}
   // Real-world rules activate only when a sourced local policy is configured.
-  for(const record of ctx.db.policyRecord.iter())if(!record.synthetic)runPolicy(ctx,e.siteId,JSON.parse(record.payload) as Policy);
+  for(const assignment of ctx.db.policyAssignment.iter())if(assignment.siteId===e.siteId){const record=ctx.db.policyRecord.id.find(assignment.policyKey);if(record&&!record.synthetic)runPolicy(ctx,e.siteId,JSON.parse(record.payload) as Policy);}
 });
 export const appendRevision=db.reducer({payload:t.string()},(ctx,{payload})=>{
   if(payload.length>12000)throw new Error('VALIDATION_ERROR');
@@ -155,7 +167,7 @@ export const appendRevision=db.reducer({payload:t.string()},(ctx,{payload})=>{
   if(!site||site.reachId!==input.reachId||site.synthetic!==previous.synthetic)throw new Error('SITE_RESOLUTION_REQUIRED');
   const evidence=persistEvidence(ctx,input,previous.synthetic,ctx.sender.toHexString());
   if(previous.synthetic)runPolicy(ctx,evidence.siteId,DEMO_POLICY);
-  else for(const record of ctx.db.policyRecord.iter())if(!record.synthetic)runPolicy(ctx,evidence.siteId,JSON.parse(record.payload) as Policy);
+  else for(const assignment of ctx.db.policyAssignment.iter())if(assignment.siteId===evidence.siteId){const record=ctx.db.policyRecord.id.find(assignment.policyKey);if(record&&!record.synthetic)runPolicy(ctx,evidence.siteId,JSON.parse(record.payload) as Policy);}
 });
 export const recordExpertVerification=db.reducer({id:t.string(),evidenceId:t.string(),verdict:t.string(),reason:t.string()},(ctx,{id,evidenceId,verdict,reason})=>{
   if(!owner(ctx)&&!['officer','scientist'].includes(ctx.db.role.identity.find(ctx.sender)?.kind??''))throw new Error('AUTHORIZATION_DENIED');
@@ -195,24 +207,27 @@ export const advanceIncident=db.reducer({incidentId:t.string(),toState:t.string(
   if(toState==='CLOSED'&&linkedMission)ctx.db.mission.id.update({...linkedMission,state:'complete'});
 });
 
-export const seedFlagship=db.reducer(ctx=>{
+function seedScenarioInputs(ctx:Context,runId:string){
   if(!owner(ctx))throw new Error('AUTHORIZATION_DENIED');
-  if(ctx.db.evidenceRecord.id.find('demo-v2-a'))return;
+  const prefix=runId?`demo-${runId}`:'demo-v2',suffix=runId?`-${runId}`:'';
+  if(ctx.db.evidenceRecord.id.find(`${prefix}-a`))return;
   ensurePolicy(ctx);
   for(const site of [
-    {id:'DEMO-SITE-001',name:'Synthetic Reach A',cityId:'DEMO-CITY',catchmentId:'DEMO-CATCHMENT',streamId:'DEMO-STREAM-001',reachId:'DEMO-REACH-001',latitude:59.3293,longitude:18.0686,synthetic:true},
-    {id:'DEMO-SITE-002',name:'Synthetic Reach B',cityId:'DEMO-CITY',catchmentId:'DEMO-CATCHMENT',streamId:'DEMO-STREAM-001',reachId:'DEMO-REACH-002',latitude:59.335,longitude:18.076,synthetic:true},
+    {id:`DEMO-SITE-001${suffix}`,name:'Synthetic Reach A',cityId:'DEMO-CITY',catchmentId:'DEMO-CATCHMENT',streamId:'DEMO-STREAM-001',reachId:'DEMO-REACH-001',latitude:59.3293,longitude:18.0686,synthetic:true},
+    {id:`DEMO-SITE-002${suffix}`,name:'Synthetic Reach B',cityId:'DEMO-CITY',catchmentId:'DEMO-CATCHMENT',streamId:'DEMO-STREAM-001',reachId:'DEMO-REACH-002',latitude:59.335,longitude:18.076,synthetic:true},
   ])if(!ctx.db.monitoringSite.id.find(site.id))ctx.db.monitoringSite.insert(site);
   const now=ctx.timestamp.toISOString(),observedAt=new Date(ctx.timestamp.toDate().getTime()-1800000).toISOString();
-  const base:ReportInput={id:'demo-v2-a',siteId:'DEMO-SITE-001',reachId:'DEMO-REACH-001',description:'Synthetic citizen report: visible foam and sewage-like odour near a fictional outfall.',category:'wastewater-indicator',observedAt,latitude:59.3293,longitude:18.0686,gpsAccuracyM:12,protocolVersion:'field-v1',mediaHashes:[],measurement:null,supersedesId:'',correctionReason:'',missionId:''};
+  const base:ReportInput={id:`${prefix}-a`,siteId:`DEMO-SITE-001${suffix}`,reachId:'DEMO-REACH-001',description:'Synthetic citizen report: visible foam and sewage-like odour near a fictional outfall.',category:'wastewater-indicator',observedAt,latitude:59.3293,longitude:18.0686,gpsAccuracyM:12,protocolVersion:'field-v1',mediaHashes:[],measurement:null,supersedesId:'',correctionReason:'',missionId:''};
   persistEvidence(ctx,base,true,'DEMO-CITIZEN-A');
-  persistEvidence(ctx,{...base,id:'demo-v2-b',description:'Independent synthetic citizen report: visible foam and an unusual odour in the same fictional reach.'},true,'DEMO-CITIZEN-B');
-  const w:Weather={id:'DEMO-WEATHER-001',siteId:base.siteId,observedAt:now,precipitationMm:8,synthetic:true,source:'Synthetic scenario input; no real weather claim',methodVersion:'demo-weather-v1'};
+  persistEvidence(ctx,{...base,id:`${prefix}-b`,description:'Independent synthetic citizen report: visible foam and an unusual odour in the same fictional reach.'},true,'DEMO-CITIZEN-B');
+  const w:Weather={id:`DEMO-WEATHER-001${suffix}`,siteId:base.siteId,observedAt:now,precipitationMm:8,synthetic:true,source:'Synthetic scenario input; no real weather claim',methodVersion:'demo-weather-v1'};
   if(!ctx.db.weatherContext.id.find(w.id))ctx.db.weatherContext.insert({id:w.id,siteId:w.siteId,synthetic:true,payload:JSON.stringify(w)});
   runPolicy(ctx,base.siteId,DEMO_POLICY);
-  const ecological={...base,id:'demo-v2-ecology',siteId:'DEMO-SITE-002',reachId:'DEMO-REACH-002',category:'ecological' as const,description:'Synthetic instrument observation of dissolved oxygen for the ecological negative control.',measurement:{indicator:'dissolved-oxygen' as const,value:3,unit:'mg/L',instrumentId:'DEMO-PROBE-001',calibrationDate:new Date(ctx.timestamp.toDate().getTime()-86400000).toISOString()}};
+  const ecological={...base,id:`${prefix}-ecology`,siteId:`DEMO-SITE-002${suffix}`,reachId:'DEMO-REACH-002',latitude:59.335,longitude:18.076,category:'ecological' as const,description:'Synthetic instrument observation of dissolved oxygen for the ecological negative control.',measurement:{indicator:'dissolved-oxygen' as const,value:3,unit:'mg/L',instrumentId:'DEMO-PROBE-001',calibrationDate:new Date(ctx.timestamp.toDate().getTime()-86400000).toISOString()}};
   persistEvidence(ctx,ecological,true,'DEMO-INSTRUMENT-A');runPolicy(ctx,ecological.siteId,DEMO_POLICY);
-});
+}
+export const seedFlagship=db.reducer(ctx=>seedScenarioInputs(ctx,''));
+export const seedScenario=db.reducer({runId:t.string()},(ctx,{runId})=>{if(!/^[A-Za-z0-9-]{3,40}$/.test(runId))throw new Error('VALIDATION_ERROR');seedScenarioInputs(ctx,runId)});
 
 export const claimOutbox=db.reducer({id:t.u64()},(ctx,{id})=>{
   if(ctx.db.role.identity.find(ctx.sender)?.kind!=='service')throw new Error('AUTHORIZATION_DENIED');
@@ -228,8 +243,25 @@ export const completeDelivery=db.reducer({id:t.u64(),status:t.string(),receipt:t
   const message=ctx.db.outbox.id.find(id);if(!message)throw new Error('CONFLICT');
   const prior=ctx.db.delivery.idempotencyKey.find(message.idempotencyKey);if(!prior)throw new Error('DELIVERY_NOT_CLAIMED');
   if(prior.status==='delivered')return;
+  if(status==='retry'&&prior.attempts>=8){status='dead';errorCode='DELIVERY_RETRY_EXHAUSTED';}
   ctx.db.delivery.idempotencyKey.update({...prior,status,receipt:receipt.slice(0,500),lastError:errorCode.slice(0,100),at:ctx.timestamp});
   ctx.db.outbox.id.update({...message,status});
+});
+export const requestFhirExport=db.reducer({incidentId:t.string()},(ctx,{incidentId})=>{
+  if(!officer(ctx))throw new Error('AUTHORIZATION_DENIED');
+  const i=ctx.db.incident.id.find(incidentId);if(!i||i.policyId===POLICY)throw new Error('CONFLICT');
+  const snapshot={incidentId,state:i.state,trace:JSON.parse(i.trace),evidenceIds:i.evidenceIds,synthetic:i.synthetic,mapperVersion:'fhir-1.0.0'};
+  const idempotencyKey=`fhir:${incidentId}:${contentHash(snapshot)}`;
+  if([...ctx.db.outbox.iter()].some(o=>o.idempotencyKey===idempotencyKey))return;
+  ctx.db.outbox.insert({id:0n,kind:'fhir-export',aggregateId:incidentId,idempotencyKey,payload:JSON.stringify(snapshot),status:'pending',at:ctx.timestamp});
+});
+export const flagAcknowledgementTimeout=db.reducer({incidentId:t.string()},(ctx,{incidentId})=>{
+  if(ctx.db.role.identity.find(ctx.sender)?.kind!=='service')throw new Error('AUTHORIZATION_DENIED');
+  const i=ctx.db.incident.id.find(incidentId);if(!i||i.state!=='INVESTIGATION_REQUIRED'||ctx.timestamp.microsSinceUnixEpoch-i.createdAt.microsSinceUnixEpoch<600000000n)return;
+  const idempotencyKey=`${incidentId}:acknowledgement-timeout`;
+  if([...ctx.db.outbox.iter()].some(o=>o.idempotencyKey===idempotencyKey))return;
+  ctx.db.incidentEvent.insert({id:0n,incidentId,fromState:i.state,toState:i.state,actor:ctx.sender,reason:'Engineering notification SLA v1: no officer acknowledgement within 10 minutes. No scientific or incident-state change.',at:ctx.timestamp});
+  ctx.db.outbox.insert({id:0n,kind:'acknowledgement-timeout',aggregateId:incidentId,idempotencyKey,payload:JSON.stringify({incidentId,synthetic:i.synthetic}),status:'pending',at:ctx.timestamp});
 });
 export const deliverTask=db.reducer({outboxId:t.u64()},(ctx,{outboxId})=>{
   if(ctx.db.role.identity.find(ctx.sender)?.kind!=='service')throw new Error('AUTHORIZATION_DENIED');
@@ -261,4 +293,36 @@ export const completeAssistance=db.reducer({id:t.string(),status:t.string(),payl
   const prior=ctx.db.assistance.id.find(id);if(!prior||!['completed','unavailable'].includes(status)||payload.length>12000)throw new Error('VALIDATION_ERROR');
   if(prior.status!=='pending')return;
   ctx.db.assistance.id.update({...prior,status,payload});
+});
+export const configureSite=db.reducer({payload:t.string()},(ctx,{payload})=>{
+  if(!owner(ctx))throw new Error('AUTHORIZATION_DENIED');
+  const site=z.object({id:z.string().min(3).max(120),name:z.string().min(3).max(200),cityId:z.string().min(3),catchmentId:z.string().min(3),streamId:z.string().min(3),reachId:z.string().min(3),latitude:z.number().min(-90).max(90),longitude:z.number().min(-180).max(180),synthetic:z.boolean()}).strict().parse(JSON.parse(payload));
+  if(ctx.db.monitoringSite.id.find(site.id))throw new Error('CONFLICT');ctx.db.monitoringSite.insert(site);
+});
+export const configurePolicy=db.reducer({siteId:t.string(),payload:t.string()},(ctx,{siteId,payload})=>{
+  if(!owner(ctx))throw new Error('AUTHORIZATION_DENIED');
+  const policy=policySchema.parse(JSON.parse(payload)),site=ctx.db.monitoringSite.id.find(siteId);
+  if(!site||site.synthetic!==policy.synthetic)throw new Error('POLICY_SCOPE_MISMATCH');
+  const policyKey=`${policy.id}@${policy.version}`,existing=ctx.db.policyRecord.id.find(policyKey);
+  if(existing&&contentHash(JSON.parse(existing.payload))!==contentHash(policy))throw new Error('IMMUTABLE_POLICY_VERSION');
+  if(!existing)ctx.db.policyRecord.insert({id:policyKey,payload:JSON.stringify(policy),synthetic:policy.synthetic});
+  const id=`${siteId}:${policyKey}`;if(!ctx.db.policyAssignment.id.find(id))ctx.db.policyAssignment.insert({id,siteId,policyKey});
+});
+export const registerSource=db.reducer({identity:t.identity(),lineage:t.string(),reason:t.string()},(ctx,{identity,lineage,reason})=>{
+  if(!owner(ctx))throw new Error('AUTHORIZATION_DENIED');clean(lineage,120);clean(reason,1000);
+  if(ctx.db.sourceRegistration.identity.find(identity))throw new Error('SOURCE_REGISTRATION_IMMUTABLE');ctx.db.sourceRegistration.insert({identity,lineage,reason,at:ctx.timestamp});
+});
+export const refreshMonitoring=db.reducer(ctx=>{
+  if(!officer(ctx)&&ctx.db.role.identity.find(ctx.sender)?.kind!=='service')throw new Error('AUTHORIZATION_DENIED');
+  const allEvidence=latestEvidence([...ctx.db.evidenceRecord.iter()].map(r=>JSON.parse(r.payload) as Evidence));
+  for(const site of ctx.db.monitoringSite.iter()){
+    const assigned=[...ctx.db.policyAssignment.iter()].find(a=>a.siteId===site.id);
+    const record=assigned?ctx.db.policyRecord.id.find(assigned.policyKey):null;
+    const policy=site.synthetic?DEMO_POLICY:record?JSON.parse(record.payload) as Policy:null;if(!policy)continue;
+    const eligible=allEvidence.filter(e=>e.siteId===site.id&&e.synthetic===site.synthetic&&(e.synthetic||e.sourceVerified)&&validateEvidence(e,ctx.timestamp.toISOString(),policy).eligible);
+    const independent=independentGroups(eligible),id=`gap-${site.id}`;
+    const mission=ctx.db.mission.id.find(id);
+    if(independent<policy.minIndependent){const row={id,incidentId:'',site:site.id,rationale:`Adaptive monitoring v1: ${independent} independent eligible source groups; policy ${policy.id}@${policy.version} requires ${policy.minIndependent} within ${policy.windowMinutes} minutes. Collect missing or stale evidence.`,state:'open',synthetic:site.synthetic};if(mission)ctx.db.mission.id.update(row);else ctx.db.mission.insert(row);}
+    else if(mission?.state==='open')ctx.db.mission.id.update({...mission,state:'complete'});
+  }
 });

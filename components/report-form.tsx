@@ -6,11 +6,16 @@ import {fieldDatabase,type FieldDraft} from '@/lib/offline/drafts';
 import {reportSchema,type Evidence,type ReportInput} from '@/lib/domain/core';
 import dynamic from 'next/dynamic';
 import {MediaUpload} from './media-upload';
+import type {SiteInput} from '@/lib/domain/core';
 const VoiceCapture=dynamic(()=>import('./voice'),{ssr:false});
 
 function newDraft():ReportInput{const query=new URLSearchParams(window.location.search);return {id:crypto.randomUUID(),siteId:query.get('site')||'',reachId:'',description:'',category:'other',observedAt:new Date().toISOString(),latitude:0,longitude:0,gpsAccuracyM:null,protocolVersion:'field-v1',mediaHashes:[],measurement:null,supersedesId:'',correctionReason:'',missionId:query.get('mission')||''}}
 export function ReportForm(){
-  const [sites]=useTable(tables.monitoringSites),[mine]=useTable(tables.myEvidence);
+  const [liveSites]=useTable(tables.monitoringSites),[mine]=useTable(tables.myEvidence);
+  const [cachedSites,setCachedSites]=useState<SiteInput[]>([]);
+  const sites=liveSites.length?liveSites:cachedSites;
+  useEffect(()=>{let active=true;void fieldDatabase.sites.toArray().then(rows=>{if(active)setCachedSites(rows)}).catch(()=>{});return()=>{active=false};},[]);
+  useEffect(()=>{if(liveSites.length)void fieldDatabase.sites.bulkPut([...liveSites]).catch(()=>{});},[liveSites]);
   const {isActive,token}=useSpacetimeDB();
   const submit=useReducer(reducers.createReport),revise=useReducer(reducers.appendRevision);
   const [draft,setDraft]=useState<ReportInput|null>(null),[pending,setPending]=useState(false),[message,setMessage]=useState(''),[storageReady,setStorageReady]=useState(false);
@@ -44,11 +49,14 @@ export function ReportForm(){
   if(!draft)return <p role="status">Restoring your field draft…</p>;
   const selected=sites.find(s=>s.id===draft.siteId);
   const change=(patch:Partial<ReportInput>)=>setDraft({...draft,...patch});
+  function captureLocation(){if(!navigator.geolocation){setMessage('Geolocation is unavailable. The report can still be saved for review.');return;}navigator.geolocation.getCurrentPosition(position=>{change({latitude:position.coords.latitude,longitude:position.coords.longitude,gpsAccuracyM:position.coords.accuracy});setMessage(`GPS captured with ${Math.round(position.coords.accuracy)} m reported accuracy. The server will check its distance from the selected site.`)},()=>setMessage('GPS was not captured. The observation will retain an unknown-accuracy warning.'),{enableHighAccuracy:true,timeout:15000,maximumAge:0});}
   return <><div className="form card">
     {selected?.synthetic&&<div className="notice">Synthetic demonstration location. This submission will be marked synthetic.</div>}
     {draft.supersedesId&&<div className="notice">Appending a correction to {draft.supersedesId}. The original remains in the ledger.</div>}
     <div className="field"><label htmlFor="site">Monitoring site</label><select id="site" value={draft.siteId} disabled={pending} onChange={e=>{const site=sites.find(s=>s.id===e.target.value);if(site)change({siteId:site.id,reachId:site.reachId,latitude:site.latitude,longitude:site.longitude})}}><option value="">Select a known monitoring site</option>{sites.map(s=><option value={s.id} key={s.id}>{s.name}{s.synthetic?' · synthetic':''}</option>)}</select></div>
     <div className="field"><label htmlFor="time">Observed time (UTC)</label><input id="time" type="datetime-local" value={draft.observedAt.slice(0,16)} disabled={pending} onChange={e=>change({observedAt:e.target.value?`${e.target.value}:00.000Z`:''})}/></div>
+    <button className="quiet-button" type="button" disabled={pending||!draft.siteId} onClick={captureLocation}>Capture GPS position and accuracy</button>
+    <p className="small muted">{draft.gpsAccuracyM===null?'No GPS captured. Coordinates currently describe the selected site, and the report will require spatial review.':`Captured coordinates ${draft.latitude.toFixed(5)}, ${draft.longitude.toFixed(5)} · reported accuracy ${Math.round(draft.gpsAccuracyM)} m`}</p>
     <div className="field"><label htmlFor="category">Observation category</label><select id="category" value={draft.category} disabled={pending} onChange={e=>change({category:e.target.value as ReportInput['category']})}><option value="other">Other / uncertain</option><option value="wastewater-indicator">Visible or sensed wastewater indicator</option><option value="ecological">Ecological condition</option></select></div>
     <div className="field"><label htmlFor="description">Describe what you directly observed</label><textarea id="description" value={draft.description} disabled={pending} onChange={e=>change({description:e.target.value})}/></div>
     {!pending&&<VoiceCapture onConfirm={description=>change({description})}/>}
@@ -62,5 +70,5 @@ export function ReportForm(){
     <div className="actions"><button className="primary" type="button" onClick={send} disabled={pending}>{pending?'Queued for synchronization':'Submit confirmed observation'}</button>{pending&&isActive&&<button className="quiet-button" type="button" onClick={()=>synchronize(draft)}>Retry queued submission</button>}</div>
     {message&&<p role="status" className="notice">{message}</p>}
     <p className="muted small">Drafts are stored in IndexedDB. Submission IDs remain stable across retries. Coordinates refer to your selected monitoring site; GPS accuracy is recorded separately when captured.</p>
-  </div><section><h2>My evidence ledger</h2><div className="list">{mine.map(row=>{const e=JSON.parse(row.payload) as Evidence;return <article className="row" key={e.id}><div><span className={`badge ${e.synthetic?'warn':''}`}>{e.synthetic?'Synthetic evidence':e.kind}</span><h3>{e.siteId}</h3><p>{e.description}</p><p className="muted small">{e.id} · {e.observedAt}{e.supersedesId?` · revises ${e.supersedesId}`:''}</p></div><button type="button" className="quiet-button" onClick={()=>{const {ownerId:ignoredOwner,sourceLineageId:ignoredLineage,synthetic:ignoredSynthetic,kind:ignoredKind,submittedAt:ignoredTime,contentHash:ignoredHash,...raw}=e;setDraft({...raw,id:crypto.randomUUID(),supersedesId:e.id,correctionReason:''});setPending(false);window.scrollTo({top:0,behavior:'smooth'})}}>Append correction</button></article>})}</div></section></>;
+  </div><section><h2>My evidence ledger</h2><div className="list">{mine.map(row=>{const e=JSON.parse(row.payload) as Evidence;return <article className="row" key={e.id}><div><span className={`badge ${e.synthetic?'warn':''}`}>{e.synthetic?'Synthetic evidence':e.kind}</span><h3>{e.siteId}</h3><p>{e.description}</p><p className="muted small">{e.id} · {e.observedAt}{e.supersedesId?` · revises ${e.supersedesId}`:''}</p></div><button type="button" className="quiet-button" onClick={()=>{const raw=reportSchema.strip().parse(e);setDraft({...raw,id:crypto.randomUUID(),supersedesId:e.id,correctionReason:''});setPending(false);window.scrollTo({top:0,behavior:'smooth'})}}>Append correction</button></article>})}</div></section></>;
 }
