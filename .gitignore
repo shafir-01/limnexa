@@ -17,3 +17,4 @@ spacetimedb/AGENTS.md
 
 .vercel
 .env*
+/.swc

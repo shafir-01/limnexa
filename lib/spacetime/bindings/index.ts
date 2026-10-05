@@ -34,27 +34,99 @@ import {
 } from "spacetimedb";
 
 // Import all reducer arg schemas
+import AdvanceIncidentReducer from "./advance_incident_reducer";
+import AppendRevisionReducer from "./append_revision_reducer";
+import ClaimOutboxReducer from "./claim_outbox_reducer";
+import CompleteDeliveryReducer from "./complete_delivery_reducer";
+import CreateReportReducer from "./create_report_reducer";
+import DeliverTaskReducer from "./deliver_task_reducer";
 import GrantRoleReducer from "./grant_role_reducer";
+import RecordExpertVerificationReducer from "./record_expert_verification_reducer";
+import RecordFindingReducer from "./record_finding_reducer";
+import RecordInterventionReducer from "./record_intervention_reducer";
 import SeedDemoReducer from "./seed_demo_reducer";
+import SeedFlagshipReducer from "./seed_flagship_reducer";
 import SubmitObservationReducer from "./submit_observation_reducer";
 import TransitionIncidentReducer from "./transition_incident_reducer";
 
 // Import all procedure arg schemas
 
 // Import all table schema definitions
+import DemoDeliveriesRow from "./demo_deliveries_table";
+import DemoEvidenceRow from "./demo_evidence_table";
+import DemoIncidentsRow from "./demo_incidents_table";
+import DemoMissionsRow from "./demo_missions_table";
+import DemoTasksRow from "./demo_tasks_table";
+import MonitoringSitesRow from "./monitoring_sites_table";
+import MyEvidenceRow from "./my_evidence_table";
 import MyObservationsRow from "./my_observations_table";
 import MyRoleRow from "./my_role_table";
+import MyTasksRow from "./my_tasks_table";
 import OperationsEventsRow from "./operations_events_table";
 import OperationsIncidentsRow from "./operations_incidents_table";
 import OperationsMissionsRow from "./operations_missions_table";
 import PublicDemoEvidenceRow from "./public_demo_evidence_table";
 import PublicDemoIncidentsRow from "./public_demo_incidents_table";
 import ReviewObservationsRow from "./review_observations_table";
+import ScienceEvidenceRow from "./science_evidence_table";
+import ScienceValidationRow from "./science_validation_table";
+import ServiceEvidenceRow from "./service_evidence_table";
+import ServiceIncidentsRow from "./service_incidents_table";
+import ServiceOutboxRow from "./service_outbox_table";
 
 /** Type-only namespace exports for generated type groups. */
 
 /** The schema information for all tables in this module. This is defined the same was as the tables would have been defined in the server. */
 const tablesSchema = __schema({
+  demoDeliveries: __table({
+    name: 'demo_deliveries',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, DemoDeliveriesRow),
+  demoEvidence: __table({
+    name: 'demo_evidence',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, DemoEvidenceRow),
+  demoIncidents: __table({
+    name: 'demo_incidents',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, DemoIncidentsRow),
+  demoMissions: __table({
+    name: 'demo_missions',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, DemoMissionsRow),
+  demoTasks: __table({
+    name: 'demo_tasks',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, DemoTasksRow),
+  monitoringSites: __table({
+    name: 'monitoring_sites',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MonitoringSitesRow),
+  myEvidence: __table({
+    name: 'my_evidence',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyEvidenceRow),
   myObservations: __table({
     name: 'my_observations',
     indexes: [
@@ -69,6 +141,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyRoleRow),
+  myTasks: __table({
+    name: 'my_tasks',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyTasksRow),
   operationsEvents: __table({
     name: 'operations_events',
     indexes: [
@@ -111,12 +190,57 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, ReviewObservationsRow),
+  scienceEvidence: __table({
+    name: 'science_evidence',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ScienceEvidenceRow),
+  scienceValidation: __table({
+    name: 'science_validation',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ScienceValidationRow),
+  serviceEvidence: __table({
+    name: 'service_evidence',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ServiceEvidenceRow),
+  serviceIncidents: __table({
+    name: 'service_incidents',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ServiceIncidentsRow),
+  serviceOutbox: __table({
+    name: 'service_outbox',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ServiceOutboxRow),
 });
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
+  __reducerSchema("advance_incident", AdvanceIncidentReducer),
+  __reducerSchema("append_revision", AppendRevisionReducer),
+  __reducerSchema("claim_outbox", ClaimOutboxReducer),
+  __reducerSchema("complete_delivery", CompleteDeliveryReducer),
+  __reducerSchema("create_report", CreateReportReducer),
+  __reducerSchema("deliver_task", DeliverTaskReducer),
   __reducerSchema("grant_role", GrantRoleReducer),
+  __reducerSchema("record_expert_verification", RecordExpertVerificationReducer),
+  __reducerSchema("record_finding", RecordFindingReducer),
+  __reducerSchema("record_intervention", RecordInterventionReducer),
   __reducerSchema("seed_demo", SeedDemoReducer),
+  __reducerSchema("seed_flagship", SeedFlagshipReducer),
   __reducerSchema("submit_observation", SubmitObservationReducer),
   __reducerSchema("transition_incident", TransitionIncidentReducer),
 );

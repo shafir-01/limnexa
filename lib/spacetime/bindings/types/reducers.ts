@@ -6,13 +6,33 @@
 import { type Infer as __Infer } from "spacetimedb";
 
 // Import all reducer arg schemas
+import AdvanceIncidentReducer from "../advance_incident_reducer";
+import AppendRevisionReducer from "../append_revision_reducer";
+import ClaimOutboxReducer from "../claim_outbox_reducer";
+import CompleteDeliveryReducer from "../complete_delivery_reducer";
+import CreateReportReducer from "../create_report_reducer";
+import DeliverTaskReducer from "../deliver_task_reducer";
 import GrantRoleReducer from "../grant_role_reducer";
+import RecordExpertVerificationReducer from "../record_expert_verification_reducer";
+import RecordFindingReducer from "../record_finding_reducer";
+import RecordInterventionReducer from "../record_intervention_reducer";
 import SeedDemoReducer from "../seed_demo_reducer";
+import SeedFlagshipReducer from "../seed_flagship_reducer";
 import SubmitObservationReducer from "../submit_observation_reducer";
 import TransitionIncidentReducer from "../transition_incident_reducer";
 
+export type AdvanceIncidentParams = __Infer<typeof AdvanceIncidentReducer>;
+export type AppendRevisionParams = __Infer<typeof AppendRevisionReducer>;
+export type ClaimOutboxParams = __Infer<typeof ClaimOutboxReducer>;
+export type CompleteDeliveryParams = __Infer<typeof CompleteDeliveryReducer>;
+export type CreateReportParams = __Infer<typeof CreateReportReducer>;
+export type DeliverTaskParams = __Infer<typeof DeliverTaskReducer>;
 export type GrantRoleParams = __Infer<typeof GrantRoleReducer>;
+export type RecordExpertVerificationParams = __Infer<typeof RecordExpertVerificationReducer>;
+export type RecordFindingParams = __Infer<typeof RecordFindingReducer>;
+export type RecordInterventionParams = __Infer<typeof RecordInterventionReducer>;
 export type SeedDemoParams = __Infer<typeof SeedDemoReducer>;
+export type SeedFlagshipParams = __Infer<typeof SeedFlagshipReducer>;
 export type SubmitObservationParams = __Infer<typeof SubmitObservationReducer>;
 export type TransitionIncidentParams = __Infer<typeof TransitionIncidentReducer>;
 
