@@ -26,7 +26,7 @@ export const DEMO_POLICY:Policy={id:'LIMNEXA_DEMO_POLICY_V1',version:'1.0.0',sta
 export function canonical(value:unknown):string {
   if(value===null||typeof value!=='object')return JSON.stringify(value);
   if(Array.isArray(value))return `[${value.map(canonical).join(',')}]`;
-  return `{${Object.entries(value).sort(([a],[b])=>a.localeCompare(b)).map(([key,item])=>`${JSON.stringify(key)}:${canonical(item)}`).join(',')}}`;
+  return `{${Object.entries(value).sort(([a],[b])=>a<b?-1:a>b?1:0).map(([key,item])=>`${JSON.stringify(key)}:${canonical(item)}`).join(',')}}`;
 }
 export function contentHash(value:unknown):string{return bytesToHex(sha256(new TextEncoder().encode(canonical(value))));}
 export function makeEvidence(input:unknown,actor:{identity:string;lineage:string;synthetic:boolean},now:string):Evidence {
