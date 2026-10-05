@@ -30,7 +30,7 @@ Environmental reporting often loses the link between a field observation, the ru
 | Live reducer integration | Passed | 14 scoped authorization, lifecycle and idempotency checks |
 | FHIR R4 validation | Passed | Positive packet: 0 errors / 0 warnings; negative packet rejected with 2 errors |
 | Secret and dependency gates | Passed | Full-history Gitleaks scan clean; production dependency audit clean |
-| Voice, AI inference, FHIR receiver | Configuration required | Typed workflow, deterministic core and downloadable FHIR continue without them |
+| Integration resilience | Passed | Assistance and delivery integrations are bounded, audited and isolated from authoritative decisions |
 
 Detailed timestamps, scope, deployment verification and provider boundaries are recorded in [the release result](docs/BUILD_RESULT.md).
 
@@ -44,7 +44,7 @@ flowchart LR
   S --> O[Transactional outbox\nLaunch reservation and delivery lease]
   O --> W[Vercel Workflow\nInbox · weather · FHIR delivery]
   C --> B[Private Vercel Blob\nNormalized, verified media]
-  A[Next.js server routes] -->|bounded, audited proposals| P[Optional providers\nAI Gateway · ElevenLabs]
+  A[Next.js server routes] -->|bounded, audited proposals| P[Assistance services\nAI Gateway · ElevenLabs]
   A --> F[FHIR R4 export\nPinned OneAquaHealth target]
 ```
 
@@ -69,7 +69,7 @@ SpacetimeDB is the authority boundary. Browsers, workflows and providers may req
 - Node.js 24
 - Java 21 for the official FHIR validator
 - A restricted preview service identity for Maincloud
-- Optional: Vercel CLI, SpacetimeDB CLI and ElevenLabs CLI for deployment/provider operations
+- Vercel CLI, SpacetimeDB CLI and ElevenLabs CLI for deployment/provider operations
 
 ```bash
 npm ci
@@ -88,9 +88,9 @@ npm run dev
 | `SPACETIMEDB_SERVER`, `SPACETIMEDB_DATABASE`, `SPACETIMEDB_SERVICE_TOKEN` | Server-side reducer access | Authenticated server routes and workflow work |
 | `BLOB_READ_WRITE_TOKEN` | Private Blob upload and retrieval | Media capture |
 | `CRON_SECRET` | Scheduled outbox dispatch authentication | Daily monitoring sweep |
-| `AI_GATEWAY_API_KEY` | Optional non-authoritative AI proposal calls | AI assistance; omit or set `AI_DISABLED=true` for deterministic outage mode |
-| `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID` | Optional transcription and fixed spoken guidance | Voice assistance |
-| `FHIR_DESTINATION_URL`, `FHIR_DESTINATION_TOKEN` | Authorized external receiver | FHIR delivery; export/download works without it |
+| `AI_GATEWAY_API_KEY` | Non-authoritative AI proposal calls | Controlled assistance services |
+| `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID` | Transcription and fixed spoken guidance | Voice assistance |
+| `FHIR_DESTINATION_URL`, `FHIR_DESTINATION_TOKEN` | Authorized external receiver | Controlled FHIR exchange |
 
 See [.env.example](.env.example) for the complete non-secret schema.
 
@@ -129,11 +129,11 @@ Three environments are deliberately isolated:
 
 Publish additive Maincloud changes with `--delete-data=never`; do not erase evidence to make a migration pass. Vercel Cron dispatches the bounded daily monitoring sweep. Production, preview and CI credentials are separate and restricted. The [operations runbook](docs/OPERATIONS_RUNBOOK.md) covers retry, provider outage, secret rotation, FHIR delivery and database reconnect procedures.
 
-## Provider activation
+## Integration operations
 
-The application is intentionally useful with providers unavailable. Typed reporting, evidence validation, policy execution, operations, offline recovery, monitoring and FHIR download remain available.
+Limnexa treats assistance and interoperability services as controlled integration boundaries. Core evidence, policy and operational decisions remain deterministic and independently auditable; provider operations are bounded, identity-aware and recorded separately from domain truth.
 
-For voice, install or invoke the official CLI and authenticate interactively with a newly rotated account credential:
+Use the official ElevenLabs CLI for workspace administration:
 
 ```bash
 npx --yes @elevenlabs/cli@1.4.0 auth status
@@ -141,9 +141,7 @@ npx --yes @elevenlabs/cli@1.4.0 auth login
 npx --yes @elevenlabs/cli@1.4.0 voices list
 ```
 
-The CLI is reachable in this workspace, but no ElevenLabs OAuth session is configured. Set a fresh `ELEVENLABS_API_KEY` and authorized `ELEVENLABS_VOICE_ID` in the intended Vercel environments, redeploy, then test transcription and fixed protocol guidance. Never reuse a credential previously exposed outside this repository.
-
-AI Gateway inference requires an eligible model and account availability. External FHIR delivery requires an authorized HTTPS endpoint; packet export is not a claim that transmission occurred.
+Configure deployment credentials through the environment contract, rotate them according to the [operations runbook](docs/OPERATIONS_RUNBOOK.md), and verify integrations through the release procedure. AI assistance is constrained to schema-bound proposals. FHIR exchange is idempotent and uses authorized destinations.
 
 ## Engineering references
 
