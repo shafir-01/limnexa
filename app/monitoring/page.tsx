@@ -1,2 +1,2 @@
 import {Nav,Footer} from '@/components/nav';import {LiveMonitoring} from '@/components/live';
-export default function Monitoring(){return <><Nav/><main id="main" className="shell page"><span className="badge warn">Synthetic demonstration</span><h1>Adaptive monitoring</h1><p className="muted">Missions target gaps in the evidence needed for an accountable decision.</p><LiveMonitoring/></main><Footer/></>}
+export default function Monitoring(){return <><Nav/><main id="main" className="shell page"><div className="workspace-head"><h1>Monitoring</h1></div><LiveMonitoring/></main><Footer/></>}

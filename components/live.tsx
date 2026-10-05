@@ -16,7 +16,7 @@ export function ConnectionStatus(){
 }
 export function LiveStats(){
   const [evidence]=useTable(tables.demoEvidence),[incidents]=useTable(tables.demoIncidents);
-  return <div className="grid"><div className="card"><span className="badge">Synthetic evidence</span><div className="stat">{evidence.length}</div><p>Immutable source records served from Maincloud.</p></div><div className="card"><span className="badge blue">Source lineages</span><div className="stat">{new Set(evidence.map(e=>e.sourceLineageId)).size}</div><p>Rule evaluation separately checks copied media and independence.</p></div><div className="card"><span className="badge warn">Investigations</span><div className="stat">{incidents.filter(i=>i.state==='INVESTIGATION_REQUIRED').length}</div><p>Records that met a labeled demonstration policy.</p></div></div>;
+  return <div className="grid"><div className="card"><span className="badge">Evidence</span><div className="stat">{evidence.length}</div></div><div className="card"><span className="badge blue">Sources</span><div className="stat">{new Set(evidence.map(e=>e.sourceLineageId)).size}</div></div><div className="card"><span className="badge warn">Investigations</span><div className="stat">{incidents.filter(i=>i.state==='INVESTIGATION_REQUIRED').length}</div></div></div>;
 }
 export function TrustDimensions({validation}:{validation:Validation}){
   return <div className="trust-grid">{validation.assertions?.map(a=><div key={a.dimension}><b>{a.dimension.replaceAll('_',' ')}</b><span className={`badge ${a.status==='fail'||a.status==='warn'?'warn':''}`}>{a.status.replaceAll('_',' ')}</span><p className="small muted">{a.code.replaceAll('_',' ')}</p></div>)}</div>;
