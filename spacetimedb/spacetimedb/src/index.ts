@@ -42,7 +42,8 @@ const routedTask=table({name:'routed_task'},{idempotencyKey:t.string().primaryKe
 const assistance=table({name:'assistance'},{id:t.string().primaryKey(),owner:t.identity(),purpose:t.string(),model:t.string(),inputHash:t.string(),status:t.string(),payload:t.string(),at:t.timestamp()});
 const policyAssignment=table({name:'policy_assignment'},{id:t.string().primaryKey(),siteId:t.string(),policyKey:t.string()});
 const sourceRegistration=table({name:'source_registration'},{identity:t.identity().primaryKey(),lineage:t.string(),reason:t.string(),at:t.timestamp()});
-const db = schema({ role, observation, incident, incidentEvent, outbox, mission,evidenceRecord,validationRecord,policyRecord,weatherContext,ruleExecution,finding,intervention,verification,delivery,mediaArtifact,monitoringSite,routedTask,assistance,policyAssignment,sourceRegistration });
+const demoSeeder=table({name:'demo_seeder'},{identity:t.identity().primaryKey(),reason:t.string(),at:t.timestamp()});
+const db = schema({ role, observation, incident, incidentEvent, outbox, mission,evidenceRecord,validationRecord,policyRecord,weatherContext,ruleExecution,finding,intervention,verification,delivery,mediaArtifact,monitoringSite,routedTask,assistance,policyAssignment,sourceRegistration,demoSeeder });
 export default db;
 type Context=ReducerCtx<typeof db.schemaType>;
 
@@ -65,7 +66,7 @@ export const publicDemoIncidents = db.anonymousView({ name:'public_demo_incident
   [...ctx.db.incident.iter()].filter(i=>i.synthetic).map(i=>({id:i.id,site:i.site,state:i.state,policyId:i.policyId,evidenceIds:i.evidenceIds,trace:i.trace,synthetic:i.synthetic})));
 
 export const grantRole = db.reducer({ identity:t.identity(), kind:t.string() },(ctx,{identity,kind})=>{
-  if(!owner(ctx)||!['officer','scientist','service'].includes(kind)) throw new Error('AUTHORIZATION_DENIED');
+  if(!owner(ctx)||!['officer','scientist','service','citizen'].includes(kind)) throw new Error('AUTHORIZATION_DENIED');
   const existing=ctx.db.role.identity.find(identity);
   if(existing) ctx.db.role.identity.update({...existing,kind}); else ctx.db.role.insert({identity,kind});
 });
@@ -208,7 +209,7 @@ export const advanceIncident=db.reducer({incidentId:t.string(),toState:t.string(
 });
 
 function seedScenarioInputs(ctx:Context,runId:string){
-  if(!owner(ctx))throw new Error('AUTHORIZATION_DENIED');
+  if(!owner(ctx)&&!ctx.db.demoSeeder.identity.find(ctx.sender))throw new Error('AUTHORIZATION_DENIED');
   const prefix=runId?`demo-${runId}`:'demo-v2',suffix=runId?`-${runId}`:'';
   if(ctx.db.evidenceRecord.id.find(`${prefix}-a`))return;
   ensurePolicy(ctx);
@@ -228,6 +229,7 @@ function seedScenarioInputs(ctx:Context,runId:string){
 }
 export const seedFlagship=db.reducer(ctx=>seedScenarioInputs(ctx,''));
 export const seedScenario=db.reducer({runId:t.string()},(ctx,{runId})=>{if(!/^[A-Za-z0-9-]{3,40}$/.test(runId))throw new Error('VALIDATION_ERROR');seedScenarioInputs(ctx,runId)});
+export const grantDemoSeeder=db.reducer({identity:t.identity(),reason:t.string()},(ctx,{identity,reason})=>{if(!owner(ctx))throw new Error('AUTHORIZATION_DENIED');clean(reason,1000);if(!ctx.db.demoSeeder.identity.find(identity))ctx.db.demoSeeder.insert({identity,reason,at:ctx.timestamp})});
 
 export const claimOutbox=db.reducer({id:t.u64()},(ctx,{id})=>{
   if(ctx.db.role.identity.find(ctx.sender)?.kind!=='service')throw new Error('AUTHORIZATION_DENIED');

@@ -19,3 +19,6 @@ spacetimedb/AGENTS.md
 .env*
 /.swc
 app/.well-known/workflow/
+.workflow-data/
+playwright-report/
+test-results/

@@ -44,6 +44,7 @@ import ConfigureSiteReducer from "./configure_site_reducer";
 import CreateReportReducer from "./create_report_reducer";
 import DeliverTaskReducer from "./deliver_task_reducer";
 import FlagAcknowledgementTimeoutReducer from "./flag_acknowledgement_timeout_reducer";
+import GrantDemoSeederReducer from "./grant_demo_seeder_reducer";
 import GrantRoleReducer from "./grant_role_reducer";
 import RecordExpertVerificationReducer from "./record_expert_verification_reducer";
 import RecordFindingReducer from "./record_finding_reducer";
@@ -273,6 +274,7 @@ const reducersSchema = __reducers(
   __reducerSchema("create_report", CreateReportReducer),
   __reducerSchema("deliver_task", DeliverTaskReducer),
   __reducerSchema("flag_acknowledgement_timeout", FlagAcknowledgementTimeoutReducer),
+  __reducerSchema("grant_demo_seeder", GrantDemoSeederReducer),
   __reducerSchema("grant_role", GrantRoleReducer),
   __reducerSchema("record_expert_verification", RecordExpertVerificationReducer),
   __reducerSchema("record_finding", RecordFindingReducer),

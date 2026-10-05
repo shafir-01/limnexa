@@ -1,0 +1,63 @@
+name: Limnexa verification
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SPACETIMEDB_SERVER: wss://maincloud.spacetimedb.com
+      NEXT_PUBLIC_SPACETIMEDB_DATABASE: limnexa-jltls-ci
+      SPACETIMEDB_DATABASE: limnexa-jltls-ci
+      TEST_SPACETIMEDB_DATABASE: limnexa-jltls-ci
+      SPACETIMEDB_TEST_RUNNER_TOKEN: ${{ secrets.SPACETIMEDB_TEST_RUNNER_TOKEN }}
+      SPACETIMEDB_TEST_SERVICE_TOKEN: ${{ secrets.SPACETIMEDB_TEST_SERVICE_TOKEN }}
+      SPACETIMEDB_SERVICE_TOKEN: ${{ secrets.SPACETIMEDB_TEST_SERVICE_TOKEN }}
+      AI_DISABLED: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm audit --omit=dev --audit-level=high
+      - name: Require isolated integration credentials
+        run: test -n "$SPACETIMEDB_TEST_RUNNER_TOKEN" && test -n "$SPACETIMEDB_TEST_SERVICE_TOKEN"
+      - run: npm run test:integration
+      - run: npm run validate:fhir
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verification-results
+          path: |
+            docs/validation/
+            test-results/e2e.json
+          retention-days: 14
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install verified Gitleaks release
+        run: |
+          curl -fsSL -o gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.30.0/gitleaks_8.30.0_linux_x64.tar.gz
+          curl -fsSL -o checksums.txt https://github.com/gitleaks/gitleaks/releases/download/v8.30.0/gitleaks_8.30.0_checksums.txt
+          grep 'gitleaks_8.30.0_linux_x64.tar.gz' checksums.txt | sha256sum -c -
+          tar -xzf gitleaks.tar.gz gitleaks
+      - run: ./gitleaks git --redact --no-banner

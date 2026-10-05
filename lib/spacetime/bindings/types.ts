@@ -70,6 +70,13 @@ export type DemoIncidents = __Infer<typeof DemoIncidents>;
 export const DemoMissions = __t.object("DemoMissions", {});
 export type DemoMissions = __Infer<typeof DemoMissions>;
 
+export const DemoSeeder = __t.object("DemoSeeder", {
+  identity: __t.identity(),
+  reason: __t.string(),
+  at: __t.timestamp(),
+});
+export type DemoSeeder = __Infer<typeof DemoSeeder>;
+
 export const DemoTasks = __t.object("DemoTasks", {});
 export type DemoTasks = __Infer<typeof DemoTasks>;
 

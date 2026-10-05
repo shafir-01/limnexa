@@ -9,7 +9,7 @@ const database=process.env.TEST_SPACETIMEDB_DATABASE||'limnexa-jltls-preview';
 if(database==='limnexa-jltls')throw new Error('Integration tests must not mutate production.');
 function newUser(){return new Promise<{token:string;identity:string}>((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Connection timeout')),15000);DbConnection.builder().withUri('wss://maincloud.spacetimedb.com').withDatabaseName(database).onConnect((conn,identity,token)=>{clearTimeout(timer);conn.disconnect();resolve({token,identity:identity.toHexString()})}).onConnectError(()=>{clearTimeout(timer);reject(new Error('Connection error'))}).build()})}
 async function main(){
-  const admin=ownerToken(),runId=`test-${Date.now()}`,citizen=await newUser(),other=await newUser();
+  const admin=process.env.SPACETIMEDB_TEST_RUNNER_TOKEN||ownerToken(),runId=`test-${Date.now()}`,citizen=await newUser(),other=await newUser();
   await withConnection(admin,[],conn=>conn.reducers.seedScenario({runId}),database);
   const siteId=`DEMO-SITE-001-${runId}`;
   const incident=await withConnection(admin,['SELECT * FROM operations_incidents'],conn=>[...conn.db.operationsIncidents.iter()].find(i=>i.site===siteId),database);
@@ -38,7 +38,7 @@ async function main(){
   const closed=await withConnection(admin,['SELECT * FROM operations_incidents','SELECT * FROM operations_missions'],conn=>({state:conn.db.operationsIncidents.id.find(incident.id)?.state,mission:conn.db.operationsMissions.id.find(`mission-${incident.id}`)?.state}),database);assert.deepEqual(closed,{state:'CLOSED',mission:'complete'});
   await withConnection(admin,[],conn=>conn.reducers.refreshMonitoring({}),database);
   // Exercise delivery duplication using the separately provisioned service identity.
-  const env=Object.fromEntries(readFileSync('.env.service.preview.local','utf8').trim().split(/\r?\n/).map(line=>{const i=line.indexOf('=');return [line.slice(0,i),line.slice(i+1)]}));
+  const env=process.env.SPACETIMEDB_TEST_SERVICE_TOKEN?{SPACETIMEDB_SERVICE_TOKEN:process.env.SPACETIMEDB_TEST_SERVICE_TOKEN}:Object.fromEntries(readFileSync('.env.service.preview.local','utf8').trim().split(/\r?\n/).map(line=>{const i=line.indexOf('=');return [line.slice(0,i),line.slice(i+1)]}));
   const outbox=await withConnection(env.SPACETIMEDB_SERVICE_TOKEN,['SELECT * FROM service_outbox'],conn=>[...conn.db.serviceOutbox.iter()].find(o=>o.aggregateId===incident.id),database);assert(outbox);
   await withConnection(env.SPACETIMEDB_SERVICE_TOKEN,[],async conn=>{await conn.reducers.claimOutbox({id:outbox.id});await conn.reducers.deliverTask({outboxId:outbox.id});await conn.reducers.deliverTask({outboxId:outbox.id});await conn.reducers.completeDelivery({id:outbox.id,status:'delivered',receipt:'integration-idempotency-proof',errorCode:''})},database);
   const deliveries=await withConnection(undefined,['SELECT * FROM demo_tasks'],conn=>[...conn.db.demoTasks.iter()].filter(t=>t.idempotencyKey===outbox.idempotencyKey),database);assert.equal(deliveries.length,1);

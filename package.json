@@ -1,1 +1,60 @@
-{"name":"limnexa","version":"0.1.0","private":true,"scripts":{"dev":"next dev","build":"next build","start":"next start","typecheck":"tsc --noEmit","test":"vitest run","lint":"eslint .","validate:fhir":"tsx scripts/validate-fhir.ts"},"dependencies":{"@ai-sdk/gateway":"^4.0.103","@elevenlabs/elevenlabs-js":"^2.71.0","@elevenlabs/react":"^1.16.0","@noble/hashes":"^2.4.0","@vercel/blob":"^2.8.0","ai":"^7.0.127","dexie":"^4.4.6","h3-js":"^4.5.0","maplibre-gl":"^6.12.0","next":"^16.0.0","react":"^19.0.0","react-dom":"^19.0.0","spacetimedb":"2.10","workflow":"^5.0.1","zod":"^4.0.0"},"devDependencies":{"@playwright/test":"^1.63.0","@types/geojson":"^7946.0.16","@types/node":"^24.0.0","@types/react":"^19.0.0","@types/react-dom":"^19.0.0","agent-browser":"^0.38.2","eslint":"^9.39.5","eslint-config-next":"^16.3.8","fast-check":"^4.10.2","fsh-sushi":"^3.20.1","tsx":"^4.23.15","typescript":"^5.9.0","vercel":"^62.2.0","vitest":"^3.2.0"},"overrides":{"@workflow/core":{"nanoid":"5.1.16"},"devalue":"5.9.3"}}
+{
+  "name": "limnexa",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "validate:fhir": "tsx scripts/validate-fhir.ts",
+    "test:integration": "tsx tests/integration/maincloud.ts",
+    "seed:demo": "tsx scripts/seed-demo.ts",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@ai-sdk/gateway": "^4.0.103",
+    "@elevenlabs/elevenlabs-js": "^2.71.0",
+    "@elevenlabs/react": "^1.16.0",
+    "@noble/hashes": "^2.4.0",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@vercel/blob": "^2.8.0",
+    "ai": "^7.0.127",
+    "dexie": "^4.4.6",
+    "h3-js": "^4.5.0",
+    "maplibre-gl": "^6.12.0",
+    "next": "^16.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "spacetimedb": "2.10",
+    "tailwindcss": "^4.3.3",
+    "workflow": "^5.0.1",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/geojson": "^7946.0.16",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "agent-browser": "^0.38.2",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.8",
+    "fast-check": "^4.10.2",
+    "fsh-sushi": "^3.20.1",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.0",
+    "vercel": "^62.2.0",
+    "vitest": "^3.2.0"
+  },
+  "overrides": {
+    "@workflow/core": {
+      "nanoid": "5.1.16"
+    },
+    "devalue": "5.9.3",
+    "tar": "7.5.22",
+    "smol-toml": "1.9.0"
+  }
+}
