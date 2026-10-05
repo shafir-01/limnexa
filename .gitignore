@@ -18,3 +18,4 @@ spacetimedb/AGENTS.md
 .vercel
 .env*
 /.swc
+app/.well-known/workflow/

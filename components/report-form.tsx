@@ -1,5 +1,5 @@
 'use client';
-import {useEffect,useRef,useState} from 'react';
+import {useCallback,useEffect,useRef,useState} from 'react';
 import {useReducer,useSpacetimeDB,useTable} from 'spacetimedb/react';
 import {reducers,tables} from '@/lib/spacetime/bindings';
 import {fieldDatabase,type FieldDraft} from '@/lib/offline/drafts';
@@ -15,15 +15,15 @@ export function ReportForm(){
   const synchronizing=useRef(false);
   useEffect(()=>{let mounted=true;fieldDatabase.drafts.get('active').then(saved=>{if(mounted){setDraft(saved?.payload||newDraft());setPending(saved?.state==='pending');setStorageReady(true)}}).catch(()=>{if(mounted){setDraft(newDraft());setMessage('Device storage is unavailable. Keep this page open until submission.')}});return()=>{mounted=false}},[]);
   useEffect(()=>{if(!draft||!storageReady)return;const saved:FieldDraft={key:'active',payload:draft,state:pending?'pending':'editing',updatedAt:new Date().toISOString()};void fieldDatabase.drafts.put(saved).catch(()=>setMessage('Could not save the draft on this device.'));},[draft,pending,storageReady]);
-  async function synchronize(payload:ReportInput){
+  const synchronize=useCallback(async (payload:ReportInput)=>{
     if(synchronizing.current)return;synchronizing.current=true;
     try{
       await (payload.supersedesId?revise({payload:JSON.stringify(payload)}):submit({payload:JSON.stringify(payload)}));
       if(storageReady)await fieldDatabase.drafts.delete('active').catch(()=>{});setPending(false);setDraft(newDraft());setMessage('Evidence submitted. The original record and its provenance are preserved.');
     }catch{setMessage('Submission is pending. Your draft will retry when the evidence service reconnects.');}
     finally{synchronizing.current=false}
-  }
-  useEffect(()=>{if(isActive&&pending&&draft)void synchronize(draft);},[isActive,pending]); // retries preserve the original client id
+  },[storageReady,revise,submit]);
+  useEffect(()=>{if(!isActive||!pending||!draft)return;const timer=setTimeout(()=>void synchronize(draft),0);return()=>clearTimeout(timer);},[isActive,pending,draft,synchronize]); // retries preserve the original client id
   async function send(){
     const result=reportSchema.safeParse(draft);
     if(!result.success){setMessage(result.error.issues.map(i=>`${i.path.join('.')}: ${i.message}`).join('; '));return;}
@@ -55,5 +55,5 @@ export function ReportForm(){
     <div className="actions"><button className="primary" type="button" onClick={send} disabled={pending}>{pending?'Queued for synchronization':'Submit confirmed observation'}</button>{pending&&isActive&&<button className="quiet-button" type="button" onClick={()=>synchronize(draft)}>Retry queued submission</button>}</div>
     {message&&<p role="status" className="notice">{message}</p>}
     <p className="muted small">Drafts are stored in IndexedDB. Submission IDs remain stable across retries. Coordinates refer to your selected monitoring site; GPS accuracy is recorded separately when captured.</p>
-  </div><section><h2>My evidence ledger</h2><div className="list">{mine.map(row=>{const e=JSON.parse(row.payload) as Evidence;return <article className="row" key={e.id}><div><span className={`badge ${e.synthetic?'warn':''}`}>{e.synthetic?'Synthetic evidence':e.kind}</span><h3>{e.siteId}</h3><p>{e.description}</p><p className="muted small">{e.id} · {e.observedAt}{e.supersedesId?` · revises ${e.supersedesId}`:''}</p></div><button type="button" className="quiet-button" onClick={()=>{const {ownerId,sourceLineageId,synthetic,kind,submittedAt,contentHash,...raw}=e;setDraft({...raw,id:crypto.randomUUID(),supersedesId:e.id,correctionReason:''});setPending(false);window.scrollTo({top:0,behavior:'smooth'})}}>Append correction</button></article>})}</div></section></>;
+  </div><section><h2>My evidence ledger</h2><div className="list">{mine.map(row=>{const e=JSON.parse(row.payload) as Evidence;return <article className="row" key={e.id}><div><span className={`badge ${e.synthetic?'warn':''}`}>{e.synthetic?'Synthetic evidence':e.kind}</span><h3>{e.siteId}</h3><p>{e.description}</p><p className="muted small">{e.id} · {e.observedAt}{e.supersedesId?` · revises ${e.supersedesId}`:''}</p></div><button type="button" className="quiet-button" onClick={()=>{const {ownerId:ignoredOwner,sourceLineageId:ignoredLineage,synthetic:ignoredSynthetic,kind:ignoredKind,submittedAt:ignoredTime,contentHash:ignoredHash,...raw}=e;setDraft({...raw,id:crypto.randomUUID(),supersedesId:e.id,correctionReason:''});setPending(false);window.scrollTo({top:0,behavior:'smooth'})}}>Append correction</button></article>})}</div></section></>;
 }

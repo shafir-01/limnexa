@@ -2,9 +2,8 @@ import { DbConnection } from './bindings';
 
 export async function withConnection<T>(token:string|undefined,queries:string[],work:(connection:DbConnection)=>Promise<T>|T,database=process.env.SPACETIMEDB_DATABASE||process.env.NEXT_PUBLIC_SPACETIMEDB_DATABASE||'limnexa-jltls'):Promise<T>{
   const connection=await new Promise<DbConnection>((resolve,reject)=>{
-    let active:DbConnection|undefined;
     const timer=setTimeout(()=>{active?.disconnect();reject(new Error('SPACETIMEDB_TIMEOUT'))},15000);
-    active=DbConnection.builder()
+    const active=DbConnection.builder()
       .withUri(process.env.SPACETIMEDB_SERVER||'wss://maincloud.spacetimedb.com')
       .withDatabaseName(database).withToken(token)
       .onConnect(conn=>{

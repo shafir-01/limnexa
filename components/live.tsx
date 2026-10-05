@@ -1,47 +1,57 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { useReducer, useSpacetimeDB, useTable } from 'spacetimedb/react';
-import { reducers, tables } from '@/lib/spacetime/bindings';
+import Link from 'next/link';
+import {useReducer,useSpacetimeDB,useTable} from 'spacetimedb/react';
+import {useState} from 'react';
+import {reducers,tables} from '@/lib/spacetime/bindings';
+import {allowedTransitions,type IncidentState,type Trace,type Validation} from '@/lib/domain/core';
 
-export function ConnectionStatus() {
-  const { isActive } = useSpacetimeDB();
-  return <span role="status" className={`badge ${isActive ? '' : 'warn'}`}>{isActive ? 'Live connection' : 'Connecting to evidence service'}</span>;
+export function ConnectionStatus(){
+  const {isActive}=useSpacetimeDB();
+  return <span role="status" className={`badge ${isActive?'':'warn'}`}>{isActive?'Live connection':'Evidence service disconnected · drafts remain on this device'}</span>;
 }
-export function LiveStats() {
-  const [evidence] = useTable(tables.publicDemoEvidence);
-  const [incidents] = useTable(tables.publicDemoIncidents);
-  return <div className="grid"><div className="card"><span className="badge">Synthetic evidence</span><div className="stat">{evidence.length}</div><p>Source observations served from Maincloud.</p></div><div className="card"><span className="badge blue">Independent inputs</span><div className="stat">2</div><p>Two seeded source lineages were assessed by the published reducer.</p></div><div className="card"><span className="badge warn">Investigation</span><div className="stat">{incidents.length}</div><p>Policy-triggered operational records.</p></div></div>;
+export function LiveStats(){
+  const [evidence]=useTable(tables.demoEvidence),[incidents]=useTable(tables.demoIncidents);
+  return <div className="grid"><div className="card"><span className="badge">Synthetic evidence</span><div className="stat">{evidence.length}</div><p>Immutable source records served from Maincloud.</p></div><div className="card"><span className="badge blue">Source lineages</span><div className="stat">{new Set(evidence.map(e=>e.sourceLineageId)).size}</div><p>Rule evaluation separately checks copied media and independence.</p></div><div className="card"><span className="badge warn">Investigations</span><div className="stat">{incidents.filter(i=>i.state==='INVESTIGATION_REQUIRED').length}</div><p>Records that met a labeled demonstration policy.</p></div></div>;
 }
-export function LiveEvidence() {
-  const [rows, ready] = useTable(tables.publicDemoEvidence);
-  return <div className="list">{!ready&&<p>Loading evidence…</p>}{rows.map(o=><article className="row" key={o.id}><div><span className="badge">Citizen observation</span><h3>{o.site}</h3><p>{o.description}</p><p className="muted small">{o.id} · {o.observedAt} · hash {o.contentHash}</p></div><span className="badge warn">Synthetic</span></article>)}</div>;
+export function TrustDimensions({validation}:{validation:Validation}){
+  return <div className="trust-grid">{validation.assertions?.map(a=><div key={a.dimension}><b>{a.dimension.replaceAll('_',' ')}</b><span className={`badge ${a.status==='fail'||a.status==='warn'?'warn':''}`}>{a.status.replaceAll('_',' ')}</span><p className="small muted">{a.code.replaceAll('_',' ')}</p></div>)}</div>;
 }
-export function LiveOperations() {
-  const [incidents, ready] = useTable(tables.publicDemoIncidents);
-  return <div className="list">{!ready&&<p>Loading incident records…</p>}{incidents.map(i=>{
-    let trace:{checks:{name:string;passed:boolean}[];independentSources:number;policyVersion:string};
-    try { trace=JSON.parse(i.trace) as typeof trace; } catch { return <div className="notice" key={i.id}>Invalid stored trace for {i.id}</div>; }
-    return <div className="two" key={i.id}><div className="card"><div className="section-head"><h2>{i.site}</h2><span className="badge warn">{i.state}</span></div><p>Incident {i.id}</p><h3>Why this was routed</h3><div className="timeline">{trace.checks.map(c=><article key={c.name}><h3>{c.passed?'✓':'×'} {c.name}</h3></article>)}</div></div><aside className="card"><h3>Decision record</h3><p><b>Policy:</b> {i.policyId} v{trace.policyVersion}</p><p><b>Independent sources:</b> {trace.independentSources}</p><p><b>Evidence IDs:</b> {i.evidenceIds}</p><p><b>State:</b> {i.state}</p><p className="muted small">Synthetic policy; investigation required is not a contamination diagnosis.</p></aside></div>})}</div>;
+export function LiveEvidence(){
+  const [rows,ready]=useTable(tables.demoEvidence);
+  return <div className="list">{!ready&&<p>Loading evidence…</p>}{rows.map(e=><article className="card" key={e.id}><span className="badge warn">Synthetic · {e.kind}</span><h2>{e.siteId}</h2><p>{e.description}</p><p className="muted small">Observed {e.observedAt} · Reach {e.reachId}</p><details><summary>Trust dimensions and provenance</summary><TrustDimensions validation={JSON.parse(e.validation) as Validation}/><p className="small">Evidence: {e.id}<br/>Lineage: {e.sourceLineageId}<br/>SHA-256: <code className="hash">{e.contentHash}</code></p></details></article>)}</div>;
 }
-export function LiveMonitoring() {
-  const [incidents] = useTable(tables.publicDemoIncidents);
-  return <div className="list">{incidents.map(i=><div className="card" key={i.id}><span className="badge blue">Evidence gap</span><h2>Revisit {i.site}</h2><p>Collect an independent follow-up observation after any recorded action. The current incident is {i.state}.</p><p className="muted small">Linked incident: {i.id} · Synthetic</p></div>)}</div>;
-}
-
-type Draft={site:string;description:string;category:'wastewater-indicator'|'ecological'|'other';observedAt:string};
-const empty:Draft={site:'',description:'',category:'other',observedAt:''};
-export function ReportForm(){
-  const [draft,setDraft]=useState<Draft>(empty),[message,setMessage]=useState('');
-  const submit=useReducer(reducers.submitObservation);
-  const [mine]=useTable(tables.myObservations);
-  const { isActive }=useSpacetimeDB();
-  useEffect(()=>{try{const saved=localStorage.getItem('limnexa-draft');if(saved)setDraft(JSON.parse(saved) as Draft)}catch{}},[]);
-  function update(next:Draft){setDraft(next);try{localStorage.setItem('limnexa-draft',JSON.stringify(next))}catch{}}
-  async function send(){
-    if(draft.site.trim().length<3||draft.description.trim().length<15||!draft.observedAt){setMessage('Add a site, time, and description of at least 15 characters.');return;}
-    if(!isActive){setMessage('Offline draft saved. Reconnect before submitting.');return;}
-    const id=crypto.randomUUID();
-    try{await submit({id,site:draft.site,category:draft.category,description:draft.description,observedAt:new Date(draft.observedAt).toISOString(),supersedesId:'',correctionReason:''});localStorage.removeItem('limnexa-draft');setDraft(empty);setMessage(`Submitted as ${id}. The original evidence is preserved.`)}catch{setMessage('Submission failed. Your offline draft is still saved on this device.');}
+type Incident={id:string;site:string;state:string;policyId:string;evidenceIds:string;trace:string;synthetic:boolean};
+function IncidentControls({incident}:{incident:Incident}){
+  const advance=useReducer(reducers.advanceIncident),finding=useReducer(reducers.recordFinding),intervene=useReducer(reducers.recordIntervention);
+  const [reason,setReason]=useState(''),[proof,setProof]=useState(''),[rationale,setRationale]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
+  async function move(toState:string){
+    setBusy(true);
+    try{
+      let recordId='';
+      if(toState==='CONFIRMED'){recordId=crypto.randomUUID();await finding({id:recordId,incidentId:incident.id,evidenceIds:incident.evidenceIds,description:proof})}
+      if(toState==='ACTIONED'){recordId=crypto.randomUUID();await intervene({id:recordId,incidentId:incident.id,description:proof})}
+      await advance({incidentId:incident.id,toState,reason,recordId,closureRationale:rationale});
+      setReason('');setProof('');setRationale('');setMessage(`Recorded ${toState}.`);
+    }catch{setMessage('Transition rejected. Check the reason, supporting record, and required evidence.')}
+    finally{setBusy(false)}
   }
-  return <><div className="form card"><div className="field"><label htmlFor="site">Site or stream reach</label><input id="site" value={draft.site} onChange={e=>update({...draft,site:e.target.value})} placeholder="Name the location"/></div><div className="field"><label htmlFor="time">Observation time</label><input id="time" type="datetime-local" value={draft.observedAt} onChange={e=>update({...draft,observedAt:e.target.value})}/></div><div className="field"><label htmlFor="category">What kind of observation?</label><select id="category" value={draft.category} onChange={e=>update({...draft,category:e.target.value as Draft['category']})}><option value="other">Other / uncertain</option><option value="wastewater-indicator">Possible wastewater indicator</option><option value="ecological">Ecological condition</option></select></div><div className="field"><label htmlFor="description">Describe direct observations</label><textarea id="description" value={draft.description} onChange={e=>update({...draft,description:e.target.value})} placeholder="What did you see, smell, or hear?"/></div><button className="primary" type="button" onClick={send}>Submit observation</button>{message&&<p role="status" className="notice">{message}</p>}</div><section><h2>My observations</h2><div className="list">{mine.map(o=><article className="row" key={o.id}><div><h3>{o.site}</h3><p>{o.description}</p><p className="muted small">{o.id} · {o.observedAt}</p></div><span className="badge">Stored evidence</span></article>)}</div></section></>;
+  const next=allowedTransitions[incident.state as IncidentState]||[];
+  return <div><h3>Officer decision</h3><label htmlFor={`reason-${incident.id}`}>Reason for the decision</label><textarea id={`reason-${incident.id}`} value={reason} onChange={e=>setReason(e.target.value)} maxLength={1000}/>{['INVESTIGATING','ACTION_REQUIRED'].includes(incident.state)&&<><label htmlFor={`proof-${incident.id}`}>{incident.state==='INVESTIGATING'?'Investigation finding supported by the linked evidence':'Intervention actually performed'}</label><textarea id={`proof-${incident.id}`} value={proof} onChange={e=>setProof(e.target.value)} maxLength={2000}/></>}{incident.state==='FOLLOW_UP'&&<details><summary>Explicit authorized closure rationale</summary><p className="small">Prefer verified follow-up evidence. An exceptional closure requires an accountable reason and does not establish improvement.</p><textarea aria-label="Exceptional closure rationale" value={rationale} onChange={e=>setRationale(e.target.value)} maxLength={1000}/></details>}<div className="actions">{next.map(state=><button className="quiet-button" type="button" key={state} disabled={busy||!reason.trim()||(['CONFIRMED','ACTIONED'].includes(state)&&!proof.trim())} onClick={()=>move(state)}>{state.replaceAll('_',' ')}</button>)}</div>{message&&<p role="status">{message}</p>}</div>;
+}
+export function IdentityPanel(){
+  const {identity}=useSpacetimeDB();const [roles]=useTable(tables.myRole);
+  return <details className="card"><summary>My access · {roles[0]?.kind||'citizen'}</summary><p className="small">This device has a persistent SpacetimeDB identity. An administrator grants professional roles; the browser cannot select its own authority.</p><code className="hash">{identity?.toHexString()||'Connecting…'}</code></details>;
+}
+export function LiveOperations(){
+  const [demo,ready]=useTable(tables.demoIncidents),[privateIncidents]=useTable(tables.operationsIncidents),[roles]=useTable(tables.myRole),[events]=useTable(tables.operationsEvents),[tasks]=useTable(tables.myTasks),[deliveries]=useTable(tables.demoDeliveries);
+  const canAct=roles[0]?.kind==='officer';
+  const incidents:readonly Incident[]=privateIncidents.length?privateIncidents.filter(i=>i.policyId!=='synthetic-wastewater-v1'):demo;
+  return <><ConnectionStatus/><IdentityPanel/>{tasks.length>0&&<section><h2>My responsibility inbox</h2>{tasks.map(t=><p key={t.idempotencyKey}>{t.route} · {t.incidentId} · {t.status}{t.synthetic?' · synthetic':''}</p>)}</section>}<div className="list">{!ready&&<p>Loading incident records…</p>}{incidents.map(i=>{
+    const trace=JSON.parse(i.trace) as Trace;
+    return <article className="two" key={i.id}><div className="card"><div className="section-head"><h2>{i.site}</h2><span className="badge warn">{i.state.replaceAll('_',' ')}</span></div><span className="badge">{i.synthetic?'Synthetic':'Operational'} · {trace.route}</span><h3>Why this was routed</h3><div className="timeline">{trace.conditions.map(c=><article key={c.code}><h3>{c.passed?'Pass':'Not met'} · {c.code.replaceAll('_',' ')}</h3><p>{c.detail}</p></article>)}</div>{trace.outcome==='ECOLOGICAL_REVIEW'&&<p className="notice">Instrument evidence met the synthetic ecological review condition. This event is routed to an ecological scientist, with no health emergency claim.</p>}{canAct&&<IncidentControls incident={i}/>}</div><aside className="card"><h3>Decision record</h3><p><b>Policy:</b> {trace.policy.id} v{trace.policy.version}</p><p><b>Source:</b> {trace.policy.source.title}</p><p><b>Rule:</b> {trace.ruleVersion}</p><p><b>Independent groups:</b> {trace.independentLineages}</p><p><b>Evidence:</b> {trace.evidenceIds.join(', ')}</p><p className="small muted">Trace {trace.id}<br/>Executed {trace.executedAt}</p><p className="small">Investigation required is not a contamination diagnosis.</p><Link className="quiet-button" href={`/interoperability?incident=${encodeURIComponent(i.id)}`}>Inspect export</Link><h3>Delivery status</h3>{deliveries.filter(d=>d.aggregateId===i.id).map(d=><p className="small" key={d.id.toString()}>{d.kind} · {d.status}</p>)}{events.filter(e=>e.incidentId===i.id).map(e=><p className="small" key={e.id.toString()}>{e.fromState} → {e.toState}: {e.reason}</p>)}</aside></article>})}</div></>;
+}
+export function LiveMonitoring(){
+  const [missions,ready]=useTable(tables.demoMissions),[privateMissions]=useTable(tables.operationsMissions);
+  const rows=privateMissions.length?privateMissions:missions;
+  return <><ConnectionStatus/><div className="list">{!ready&&<p>Loading missions…</p>}{ready&&!rows.length&&<p className="notice">No follow-up missions yet. An officer moving an incident to FOLLOW UP creates a targeted request through the authoritative reducer.</p>}{rows.map(m=><article className="card" key={m.id}><span className="badge blue">{m.synthetic?'Synthetic · ':''}{m.state}</span><h2>Revisit {m.site}</h2><p>{m.rationale}</p><p className="small">Mission {m.id} · Incident {m.incidentId}</p><Link className="quiet-button" href={`/report?mission=${encodeURIComponent(m.id)}&site=${encodeURIComponent(m.site)}`}>Collect follow-up evidence</Link><p className="muted small">A before/after pair cannot establish causation. Closure records an operational outcome with its evidence or an explicit authorized rationale.</p></article>)}</div></>;
 }

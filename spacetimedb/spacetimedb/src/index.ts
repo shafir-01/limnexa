@@ -1,4 +1,4 @@
-import { schema, table, t, type ReducerCtx } from 'spacetimedb/server';
+import { schema, table, t, type ReducerCtx, type ViewCtx } from 'spacetimedb/server';
 import { DEMO_POLICY, assertTransition, contentHash, evaluate, makeEvidence, reportSchema, validateEvidence, type Evidence, type IncidentState, type Policy, type ReportInput, type Trace, type Weather } from '../../../lib/domain/core';
 
 // Public identity, never a secret. The Maincloud owner alone grants roles.
@@ -46,10 +46,8 @@ const PublicEvidence = t.row('PublicEvidence', { id:t.string().primaryKey(), sit
 const PublicIncident = t.row('PublicIncident', { id:t.string().primaryKey(), site:t.string(), state:t.string(), policyId:t.string(), evidenceIds:t.string(), trace:t.string(), synthetic:t.bool() });
 
 const owner = (ctx: { sender: { toHexString(): string } }) => ctx.sender.toHexString() === OWNER;
-const officer = (ctx: any) => owner(ctx) || ctx.db.role.identity.find(ctx.sender)?.kind === 'officer';
-function hash(value: string): string { let h = 2166136261; for (let i=0;i<value.length;i++) h=Math.imul(h^value.charCodeAt(i),16777619); return `fnv1a-${(h>>>0).toString(16).padStart(8,'0')}`; }
+const officer = (ctx: Context | ViewCtx<typeof db.schemaType>) => owner(ctx) || ctx.db.role.identity.find(ctx.sender)?.kind === 'officer';
 function clean(value: string, max: number): string { const v=value.trim(); if (!v || v.length>max) throw new Error('VALIDATION_ERROR'); return v; }
-const transitions: Record<string,string[]> = { 'investigation-required':['acknowledged'], acknowledged:['investigating'], investigating:['action-recorded'], 'action-recorded':['follow-up-required'], 'follow-up-required':['closed','investigating'], closed:[] };
 
 export const myRole = db.view({ name:'my_role', public:true },t.option(role.rowType),ctx=>ctx.db.role.identity.find(ctx.sender)??undefined);
 export const myObservations = db.view({ name:'my_observations', public:true },t.array(observation.rowType),ctx=>[...ctx.db.observation.iter()].filter(o=>o.owner.toHexString()===ctx.sender.toHexString()));
@@ -68,49 +66,10 @@ export const grantRole = db.reducer({ identity:t.identity(), kind:t.string() },(
   if(existing) ctx.db.role.identity.update({...existing,kind}); else ctx.db.role.insert({identity,kind});
 });
 
-type Input = {id:string;site:string;category:string;description:string;observedAt:string;lineage:string;synthetic:boolean;supersedesId:string;correctionReason:string};
-function add(ctx:any,input:Input){
-  const id=clean(input.id,100),site=clean(input.site,120),description=clean(input.description,2000);
-  if(description.length<15||!['wastewater-indicator','ecological','other'].includes(input.category)||!/^\d{4}-\d\d-\d\dT/.test(input.observedAt)) throw new Error('VALIDATION_ERROR');
-  if(ctx.db.observation.id.find(id)) throw new Error('CONFLICT');
-  if(input.supersedesId){ const previous=ctx.db.observation.id.find(input.supersedesId); if(!previous||previous.owner.toHexString()!==ctx.sender.toHexString()||!input.correctionReason.trim()) throw new Error('AUTHORIZATION_DENIED'); }
-  const row={...input,id,site,description,owner:ctx.sender,createdAt:ctx.timestamp,contentHash:hash(JSON.stringify(input))};
-  ctx.db.observation.insert(row);
-  if(!input.synthetic||input.category!=='wastewater-indicator')return;
-  const relevant=[...ctx.db.observation.iter()].filter((o:typeof row)=>o.synthetic&&o.site===site&&o.category===input.category&&!o.supersedesId);
-  const lineages=new Set(relevant.map((o:typeof row)=>o.lineage));
-  const checks=[{name:'category',passed:relevant.length>0},{name:'independent-lineages',passed:lineages.size>=2},{name:'provenance',passed:relevant.every((o:typeof row)=>!!o.contentHash)}];
-  if(!checks.every(c=>c.passed))return;
-  const incidentId=`inc-${hash(site+POLICY)}`;
-  if(ctx.db.incident.id.find(incidentId))return;
-  const evidenceIds=relevant.map((o:typeof row)=>o.id);
-  ctx.db.incident.insert({id:incidentId,site,state:'investigation-required',synthetic:true,policyId:POLICY,evidenceIds:evidenceIds.join(','),trace:JSON.stringify({policyVersion:'1.0.0',checks,independentSources:lineages.size,evidenceIds}),createdAt:ctx.timestamp});
-  ctx.db.incidentEvent.insert({id:0n,incidentId,fromState:'',toState:'investigation-required',actor:ctx.sender,reason:'Synthetic policy passed',at:ctx.timestamp});
-  ctx.db.outbox.insert({id:0n,kind:'incident-opened',aggregateId:incidentId,idempotencyKey:`${incidentId}:opened`,payload:JSON.stringify({incidentId}),status:'pending',at:ctx.timestamp});
-}
-export const submitObservation=db.reducer({id:t.string(),site:t.string(),category:t.string(),description:t.string(),observedAt:t.string(),supersedesId:t.string(),correctionReason:t.string()},(ctx,input)=>add(ctx,{...input,lineage:ctx.sender.toHexString(),synthetic:false}));
-export const seedDemo=db.reducer(ctx=>{
-  if(!owner(ctx))throw new Error('AUTHORIZATION_DENIED');
-  const entries=[
-    {id:'demo-a',site:'Synthetic Reach A',category:'wastewater-indicator',description:'Synthetic report of unusual odor and discoloration near an outfall.',observedAt:'2026-09-30T09:00:00.000Z',lineage:'demo-source-a'},
-    {id:'demo-b',site:'Synthetic Reach A',category:'wastewater-indicator',description:'Independent synthetic report of unusual odor in the same reach.',observedAt:'2026-09-30T09:25:00.000Z',lineage:'demo-source-b'},
-    {id:'demo-c',site:'Synthetic Reach B',category:'ecological',description:'Synthetic ecological observation of floating plant matter.',observedAt:'2026-09-30T10:00:00.000Z',lineage:'demo-source-c'},
-  ];
-  for(const entry of entries)if(!ctx.db.observation.id.find(entry.id))add(ctx,{...entry,synthetic:true,supersedesId:'',correctionReason:''});
-});
-export const transitionIncident=db.reducer({incidentId:t.string(),toState:t.string(),reason:t.string()},(ctx,{incidentId,toState,reason})=>{
-  if(!officer(ctx))throw new Error('AUTHORIZATION_DENIED');
-  const current=ctx.db.incident.id.find(incidentId);
-  if(!current||!transitions[current.state]?.includes(toState))throw new Error('ILLEGAL_STATE_TRANSITION');
-  clean(reason,1000);
-  ctx.db.incident.id.update({...current,state:toState});
-  ctx.db.incidentEvent.insert({id:0n,incidentId,fromState:current.state,toState,actor:ctx.sender,reason,at:ctx.timestamp});
-  ctx.db.outbox.insert({id:0n,kind:'incident-transition',aggregateId:incidentId,idempotencyKey:`${incidentId}:${toState}:${ctx.timestamp}`,payload:JSON.stringify({incidentId,toState}),status:'pending',at:ctx.timestamp});
-  if(toState==='follow-up-required'){
-    const id=`mission-${incidentId}`;
-    if(!ctx.db.mission.id.find(id))ctx.db.mission.insert({id,incidentId,site:current.site,rationale:'Collect a new independent observation after action; one before/after pair cannot establish causation.',state:'open',synthetic:current.synthetic});
-  }
-});
+// Legacy rows remain available for historical inspection; v1 writes are disabled.
+export const submitObservation=db.reducer({id:t.string(),site:t.string(),category:t.string(),description:t.string(),observedAt:t.string(),supersedesId:t.string(),correctionReason:t.string()},()=>{throw new Error('DEPRECATED_USE_CREATE_REPORT')});
+export const seedDemo=db.reducer(()=>{throw new Error('DEPRECATED_USE_SEED_FLAGSHIP')});
+export const transitionIncident=db.reducer({incidentId:t.string(),toState:t.string(),reason:t.string()},()=>{throw new Error('DEPRECATED_USE_ADVANCE_INCIDENT')});
 
 const DemoEvidenceRow=t.row('DemoEvidenceRow',{id:t.string().primaryKey(),siteId:t.string(),reachId:t.string(),description:t.string(),category:t.string(),observedAt:t.string(),latitude:t.f64(),longitude:t.f64(),sourceLineageId:t.string(),kind:t.string(),synthetic:t.bool(),contentHash:t.string(),validation:t.string()});
 const DemoDeliveryRow=t.row('DemoDeliveryRow',{id:t.u64().primaryKey(),kind:t.string(),aggregateId:t.string(),status:t.string()});
@@ -125,7 +84,7 @@ export const monitoringSites=db.anonymousView({name:'monitoring_sites',public:tr
 export const myEvidence=db.view({name:'my_evidence',public:true},t.array(evidenceRecord.rowType),ctx=>[...ctx.db.evidenceRecord.iter()].filter(e=>e.owner.toHexString()===ctx.sender.toHexString()));
 export const scienceEvidence=db.view({name:'science_evidence',public:true},t.array(evidenceRecord.rowType),ctx=>owner(ctx)||['officer','scientist'].includes(ctx.db.role.identity.find(ctx.sender)?.kind??'')?[...ctx.db.evidenceRecord.iter()]:[]);
 export const scienceValidation=db.view({name:'science_validation',public:true},t.array(validationRecord.rowType),ctx=>owner(ctx)||['officer','scientist'].includes(ctx.db.role.identity.find(ctx.sender)?.kind??'')?[...ctx.db.validationRecord.iter()]:[]);
-export const serviceOutbox=db.view({name:'service_outbox',public:true},t.array(outbox.rowType),ctx=>ctx.db.role.identity.find(ctx.sender)?.kind==='service'?[...ctx.db.outbox.iter()]:[]);
+export const serviceOutbox=db.view({name:'service_outbox',public:true},t.array(outbox.rowType),ctx=>ctx.db.role.identity.find(ctx.sender)?.kind==='service'?[...ctx.db.outbox.iter()].filter(o=>ctx.db.incident.id.find(o.aggregateId)?.policyId!==POLICY):[]);
 export const serviceIncidents=db.view({name:'service_incidents',public:true},t.array(incident.rowType),ctx=>ctx.db.role.identity.find(ctx.sender)?.kind==='service'?[...ctx.db.incident.iter()]:[]);
 export const serviceEvidence=db.view({name:'service_evidence',public:true},t.array(evidenceRecord.rowType),ctx=>ctx.db.role.identity.find(ctx.sender)?.kind==='service'?[...ctx.db.evidenceRecord.iter()]:[]);
 export const demoTasks=db.anonymousView({name:'demo_tasks',public:true},t.array(routedTask.rowType),ctx=>[...ctx.db.routedTask.iter()].filter(task=>task.synthetic));
@@ -184,10 +143,14 @@ export const createReport=db.reducer({payload:t.string()},(ctx,{payload})=>{
 });
 export const appendRevision=db.reducer({payload:t.string()},(ctx,{payload})=>{
   if(payload.length>12000)throw new Error('VALIDATION_ERROR');
-  const input=JSON.parse(payload) as ReportInput;
+  const input=reportSchema.parse(JSON.parse(payload));
   if(!input.supersedesId)throw new Error('REVISION_PARENT_REQUIRED');
   const previous=ctx.db.evidenceRecord.id.find(input.supersedesId);if(!previous)throw new Error('CONFLICT');
-  persistEvidence(ctx,input,previous.synthetic,ctx.sender.toHexString());
+  const site=ctx.db.monitoringSite.id.find(input.siteId);
+  if(!site||site.reachId!==input.reachId||site.synthetic!==previous.synthetic)throw new Error('SITE_RESOLUTION_REQUIRED');
+  const evidence=persistEvidence(ctx,input,previous.synthetic,ctx.sender.toHexString());
+  if(previous.synthetic)runPolicy(ctx,evidence.siteId,DEMO_POLICY);
+  else for(const record of ctx.db.policyRecord.iter())if(!record.synthetic)runPolicy(ctx,evidence.siteId,JSON.parse(record.payload) as Policy);
 });
 export const recordExpertVerification=db.reducer({id:t.string(),evidenceId:t.string(),verdict:t.string(),reason:t.string()},(ctx,{id,evidenceId,verdict,reason})=>{
   if(!owner(ctx)&&!['officer','scientist'].includes(ctx.db.role.identity.find(ctx.sender)?.kind??''))throw new Error('AUTHORIZATION_DENIED');
@@ -197,7 +160,7 @@ export const recordExpertVerification=db.reducer({id:t.string(),evidenceId:t.str
 export const recordFinding=db.reducer({id:t.string(),incidentId:t.string(),evidenceIds:t.string(),description:t.string()},(ctx,input)=>{
   if(!officer(ctx))throw new Error('AUTHORIZATION_DENIED');
   const i=ctx.db.incident.id.find(input.incidentId);
-  if(!i||i.state!=='INVESTIGATING'||!input.evidenceIds.split(',').every(id=>ctx.db.evidenceRecord.id.find(id)))throw new Error('EVIDENCE_INELIGIBLE');
+  if(!i||i.state!=='INVESTIGATING'||!input.evidenceIds.split(',').every(id=>ctx.db.evidenceRecord.id.find(id)?.siteId===i.site&&ctx.db.validationRecord.id.find(`validation-${id}`)?.eligible))throw new Error('EVIDENCE_INELIGIBLE');
   clean(input.description,2000);ctx.db.finding.insert({...input,actor:ctx.sender,at:ctx.timestamp});
 });
 export const recordIntervention=db.reducer({id:t.string(),incidentId:t.string(),description:t.string()},(ctx,input)=>{
@@ -208,11 +171,17 @@ export const recordIntervention=db.reducer({id:t.string(),incidentId:t.string(),
 export const advanceIncident=db.reducer({incidentId:t.string(),toState:t.string(),reason:t.string(),recordId:t.string(),closureRationale:t.string()},(ctx,{incidentId,toState,reason,recordId,closureRationale})=>{
   if(!officer(ctx))throw new Error('AUTHORIZATION_DENIED');
   const current=ctx.db.incident.id.find(incidentId);if(!current)throw new Error('CONFLICT');
+  clean(reason,1000);if(closureRationale.length>1000)throw new Error('VALIDATION_ERROR');
   const f=ctx.db.finding.id.find(recordId),action=ctx.db.intervention.id.find(recordId);
   const linkedMission=ctx.db.mission.id.find(`mission-${incidentId}`);
   const actions=[...ctx.db.intervention.iter()].filter(a=>a.incidentId===incidentId);
   const latestAction=actions.reduce((latest,a)=>a.at.microsSinceUnixEpoch>latest?a.at.microsSinceUnixEpoch:latest,0n);
-  const followUp=[...ctx.db.evidenceRecord.iter()].map(r=>JSON.parse(r.payload) as Evidence).filter(e=>e.missionId===linkedMission?.id&&e.siteId===current.site&&Date.parse(e.observedAt)*1000>Number(latestAction)&&ctx.db.validationRecord.id.find(`validation-${e.id}`)?.eligible&&[...ctx.db.verification.iter()].some(v=>v.evidenceId===e.id&&v.verdict==='accepted'));
+  const allEvidence=[...ctx.db.evidenceRecord.iter()].map(r=>JSON.parse(r.payload) as Evidence);
+  const superseded=new Set(allEvidence.map(e=>e.supersedesId));
+  const followUp=allEvidence.filter(e=>{
+    const reviews=[...ctx.db.verification.iter()].filter(v=>v.evidenceId===e.id).sort((a,b)=>a.at.microsSinceUnixEpoch>b.at.microsSinceUnixEpoch?-1:1);
+    return !superseded.has(e.id)&&e.synthetic===current.synthetic&&e.missionId===linkedMission?.id&&e.siteId===current.site&&Date.parse(e.observedAt)*1000>Number(latestAction)&&ctx.db.validationRecord.id.find(`validation-${e.id}`)?.eligible&&reviews[0]?.verdict==='accepted';
+  });
   assertTransition(current.state as IncidentState,toState as IncidentState,{role:owner(ctx)?'admin':'officer',reason,findingId:f?.incidentId===incidentId?f.id:undefined,supportingEvidenceIds:f?.evidenceIds.split(',').filter(Boolean),interventionId:action?.incidentId===incidentId?action.id:undefined,followUpEvidenceIds:followUp.map(e=>e.id),authorizedClosureRationale:closureRationale});
   ctx.db.incident.id.update({...current,state:toState});
   ctx.db.incidentEvent.insert({id:0n,incidentId,fromState:current.state,toState,actor:ctx.sender,reason,at:ctx.timestamp});
