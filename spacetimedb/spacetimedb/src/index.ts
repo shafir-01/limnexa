@@ -38,7 +38,8 @@ const delivery = table({name:'delivery'},{idempotencyKey:t.string().primaryKey()
 const mediaArtifact = table({name:'media_artifact'},{id:t.string().primaryKey(),owner:t.identity(),pathname:t.string(),contentHash:t.string(),mimeType:t.string(),synthetic:t.bool(),at:t.timestamp()});
 const monitoringSite=table({name:'monitoring_site'},{id:t.string().primaryKey(),name:t.string(),cityId:t.string(),catchmentId:t.string(),streamId:t.string(),reachId:t.string(),latitude:t.f64(),longitude:t.f64(),synthetic:t.bool()});
 const routedTask=table({name:'routed_task'},{idempotencyKey:t.string().primaryKey(),incidentId:t.string(),route:t.string(),status:t.string(),synthetic:t.bool(),at:t.timestamp()});
-const db = schema({ role, observation, incident, incidentEvent, outbox, mission,evidenceRecord,validationRecord,policyRecord,weatherContext,ruleExecution,finding,intervention,verification,delivery,mediaArtifact,monitoringSite,routedTask });
+const assistance=table({name:'assistance'},{id:t.string().primaryKey(),owner:t.identity(),purpose:t.string(),model:t.string(),inputHash:t.string(),status:t.string(),payload:t.string(),at:t.timestamp()});
+const db = schema({ role, observation, incident, incidentEvent, outbox, mission,evidenceRecord,validationRecord,policyRecord,weatherContext,ruleExecution,finding,intervention,verification,delivery,mediaArtifact,monitoringSite,routedTask,assistance });
 export default db;
 type Context=ReducerCtx<typeof db.schemaType>;
 
@@ -82,6 +83,8 @@ export const demoMissions=db.anonymousView({name:'demo_missions',public:true},t.
 export const demoDeliveries=db.anonymousView({name:'demo_deliveries',public:true},t.array(DemoDeliveryRow),ctx=>[...ctx.db.outbox.iter()].filter(o=>ctx.db.incident.id.find(o.aggregateId)?.synthetic).map(o=>({id:o.id,kind:o.kind,aggregateId:o.aggregateId,status:o.status})));
 export const monitoringSites=db.anonymousView({name:'monitoring_sites',public:true},t.array(monitoringSite.rowType),ctx=>[...ctx.db.monitoringSite.iter()].map(s=>({...s,latitude:s.synthetic?s.latitude:Math.round(s.latitude*100)/100,longitude:s.synthetic?s.longitude:Math.round(s.longitude*100)/100})));
 export const myEvidence=db.view({name:'my_evidence',public:true},t.array(evidenceRecord.rowType),ctx=>[...ctx.db.evidenceRecord.iter()].filter(e=>e.owner.toHexString()===ctx.sender.toHexString()));
+export const myMedia=db.view({name:'my_media',public:true},t.array(mediaArtifact.rowType),ctx=>[...ctx.db.mediaArtifact.iter()].filter(m=>m.owner.toHexString()===ctx.sender.toHexString()));
+export const myAssistance=db.view({name:'my_assistance',public:true},t.array(assistance.rowType),ctx=>[...ctx.db.assistance.iter()].filter(m=>m.owner.toHexString()===ctx.sender.toHexString()));
 export const scienceEvidence=db.view({name:'science_evidence',public:true},t.array(evidenceRecord.rowType),ctx=>owner(ctx)||['officer','scientist'].includes(ctx.db.role.identity.find(ctx.sender)?.kind??'')?[...ctx.db.evidenceRecord.iter()]:[]);
 export const scienceValidation=db.view({name:'science_validation',public:true},t.array(validationRecord.rowType),ctx=>owner(ctx)||['officer','scientist'].includes(ctx.db.role.identity.find(ctx.sender)?.kind??'')?[...ctx.db.validationRecord.iter()]:[]);
 export const serviceOutbox=db.view({name:'service_outbox',public:true},t.array(outbox.rowType),ctx=>ctx.db.role.identity.find(ctx.sender)?.kind==='service'?[...ctx.db.outbox.iter()].filter(o=>ctx.db.incident.id.find(o.aggregateId)?.policyId!==POLICY):[]);
@@ -96,6 +99,8 @@ export const myTasks=db.view({name:'my_tasks',public:true},t.array(routedTask.ro
 function ensurePolicy(ctx:Context){const id=`${DEMO_POLICY.id}@${DEMO_POLICY.version}`;if(!ctx.db.policyRecord.id.find(id))ctx.db.policyRecord.insert({id,payload:JSON.stringify(DEMO_POLICY),synthetic:true});}
 function persistEvidence(ctx:Context,untrusted:unknown,synthetic:boolean,lineage:string):Evidence{
   const input=reportSchema.parse(untrusted);
+  if(input.missionId){const mission=ctx.db.mission.id.find(input.missionId);if(!mission||mission.site!==input.siteId||mission.synthetic!==synthetic||mission.state!=='open')throw new Error('MISSION_CONFLICT');}
+  for(const hash of input.mediaHashes)if(![...ctx.db.mediaArtifact.iter()].some(m=>m.contentHash===hash&&m.owner.toHexString()===ctx.sender.toHexString()&&m.synthetic===synthetic))throw new Error('MEDIA_VERIFICATION_REQUIRED');
   const existing=ctx.db.evidenceRecord.id.find(input.id);
   if(existing){
     const e=JSON.parse(existing.payload) as Evidence;
@@ -235,4 +240,25 @@ export const deliverTask=db.reducer({outboxId:t.u64()},(ctx,{outboxId})=>{
   const route=trace.route;
   if(!['ecological-scientist','environmental-officer'].includes(route))throw new Error('RESPONSIBILITY_NOT_CONFIGURED');
   ctx.db.routedTask.insert({idempotencyKey:message.idempotencyKey,incidentId:i.id,route,status:'available',synthetic:i.synthetic,at:ctx.timestamp});
+});
+export const registerMedia=db.reducer({id:t.string(),ownerIdentity:t.identity(),pathname:t.string(),contentHash:t.string(),mimeType:t.string(),siteId:t.string()},(ctx,input)=>{
+  if(ctx.db.role.identity.find(ctx.sender)?.kind!=='service')throw new Error('AUTHORIZATION_DENIED');
+  const site=ctx.db.monitoringSite.id.find(input.siteId);
+  if(!site||!input.pathname.startsWith(`evidence/${input.ownerIdentity.toHexString()}/`)||!/^\w[\w-]{2,100}$/.test(input.id)||!/^([a-f0-9]{64})$/.test(input.contentHash)||!['image/jpeg','image/png','image/webp'].includes(input.mimeType))throw new Error('VALIDATION_ERROR');
+  const prior=ctx.db.mediaArtifact.id.find(input.id);
+  if(prior){if(prior.contentHash!==input.contentHash||prior.owner.toHexString()!==input.ownerIdentity.toHexString())throw new Error('CONFLICT');return;}
+  ctx.db.mediaArtifact.insert({id:input.id,owner:input.ownerIdentity,pathname:input.pathname,contentHash:input.contentHash,mimeType:input.mimeType,synthetic:site.synthetic,at:ctx.timestamp});
+});
+export const reserveAssistance=db.reducer({id:t.string(),ownerIdentity:t.identity(),purpose:t.string(),model:t.string(),inputHash:t.string()},(ctx,input)=>{
+  if(ctx.db.role.identity.find(ctx.sender)?.kind!=='service')throw new Error('AUTHORIZATION_DENIED');
+  if(!['field-extraction','voice-session','visible-media-triage','rule-explanation'].includes(input.purpose)||input.model.length>120||!/^([a-f0-9]{64})$/.test(input.inputHash))throw new Error('VALIDATION_ERROR');
+  const recent=[...ctx.db.assistance.iter()].filter(a=>a.owner.toHexString()===input.ownerIdentity.toHexString()&&ctx.timestamp.microsSinceUnixEpoch-a.at.microsSinceUnixEpoch<3600000000n);
+  if(recent.length>=20)throw new Error('RATE_LIMITED');
+  ctx.db.assistance.insert({id:input.id,owner:input.ownerIdentity,purpose:input.purpose,model:input.model,inputHash:input.inputHash,status:'pending',payload:'',at:ctx.timestamp});
+});
+export const completeAssistance=db.reducer({id:t.string(),status:t.string(),payload:t.string()},(ctx,{id,status,payload})=>{
+  if(ctx.db.role.identity.find(ctx.sender)?.kind!=='service')throw new Error('AUTHORIZATION_DENIED');
+  const prior=ctx.db.assistance.id.find(id);if(!prior||!['completed','unavailable'].includes(status)||payload.length>12000)throw new Error('VALIDATION_ERROR');
+  if(prior.status!=='pending')return;
+  ctx.db.assistance.id.update({...prior,status,payload});
 });

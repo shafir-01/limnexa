@@ -10,6 +10,18 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
+export const Assistance = __t.object("Assistance", {
+  id: __t.string(),
+  owner: __t.identity(),
+  purpose: __t.string(),
+  model: __t.string(),
+  inputHash: __t.string(),
+  status: __t.string(),
+  payload: __t.string(),
+  at: __t.timestamp(),
+});
+export type Assistance = __Infer<typeof Assistance>;
+
 export const Delivery = __t.object("Delivery", {
   idempotencyKey: __t.string(),
   outboxId: __t.u64(),
@@ -150,8 +162,14 @@ export type MonitoringSite = __Infer<typeof MonitoringSite>;
 export const MonitoringSites = __t.object("MonitoringSites", {});
 export type MonitoringSites = __Infer<typeof MonitoringSites>;
 
+export const MyAssistance = __t.object("MyAssistance", {});
+export type MyAssistance = __Infer<typeof MyAssistance>;
+
 export const MyEvidence = __t.object("MyEvidence", {});
 export type MyEvidence = __Infer<typeof MyEvidence>;
+
+export const MyMedia = __t.object("MyMedia", {});
+export type MyMedia = __Infer<typeof MyMedia>;
 
 export const MyObservations = __t.object("MyObservations", {});
 export type MyObservations = __Infer<typeof MyObservations>;

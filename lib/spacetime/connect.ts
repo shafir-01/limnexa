@@ -7,6 +7,7 @@ export async function withConnection<T>(token:string|undefined,queries:string[],
       .withUri(process.env.SPACETIMEDB_SERVER||'wss://maincloud.spacetimedb.com')
       .withDatabaseName(database).withToken(token)
       .onConnect(conn=>{
+        if(!queries.length){clearTimeout(timer);resolve(conn);return;}
         conn.subscriptionBuilder().onApplied(()=>{clearTimeout(timer);resolve(conn)}).onError(()=>{clearTimeout(timer);conn.disconnect();reject(new Error('SUBSCRIPTION_DENIED'))}).subscribe(queries);
       }).onConnectError(()=>{clearTimeout(timer);reject(new Error('AUTHENTICATION_OR_CONNECTION_FAILED'))}).build();
   });

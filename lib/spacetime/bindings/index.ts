@@ -37,6 +37,7 @@ import {
 import AdvanceIncidentReducer from "./advance_incident_reducer";
 import AppendRevisionReducer from "./append_revision_reducer";
 import ClaimOutboxReducer from "./claim_outbox_reducer";
+import CompleteAssistanceReducer from "./complete_assistance_reducer";
 import CompleteDeliveryReducer from "./complete_delivery_reducer";
 import CreateReportReducer from "./create_report_reducer";
 import DeliverTaskReducer from "./deliver_task_reducer";
@@ -44,6 +45,8 @@ import GrantRoleReducer from "./grant_role_reducer";
 import RecordExpertVerificationReducer from "./record_expert_verification_reducer";
 import RecordFindingReducer from "./record_finding_reducer";
 import RecordInterventionReducer from "./record_intervention_reducer";
+import RegisterMediaReducer from "./register_media_reducer";
+import ReserveAssistanceReducer from "./reserve_assistance_reducer";
 import SeedDemoReducer from "./seed_demo_reducer";
 import SeedFlagshipReducer from "./seed_flagship_reducer";
 import SubmitObservationReducer from "./submit_observation_reducer";
@@ -58,7 +61,9 @@ import DemoIncidentsRow from "./demo_incidents_table";
 import DemoMissionsRow from "./demo_missions_table";
 import DemoTasksRow from "./demo_tasks_table";
 import MonitoringSitesRow from "./monitoring_sites_table";
+import MyAssistanceRow from "./my_assistance_table";
 import MyEvidenceRow from "./my_evidence_table";
+import MyMediaRow from "./my_media_table";
 import MyObservationsRow from "./my_observations_table";
 import MyRoleRow from "./my_role_table";
 import MyTasksRow from "./my_tasks_table";
@@ -120,6 +125,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MonitoringSitesRow),
+  myAssistance: __table({
+    name: 'my_assistance',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyAssistanceRow),
   myEvidence: __table({
     name: 'my_evidence',
     indexes: [
@@ -127,6 +139,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyEvidenceRow),
+  myMedia: __table({
+    name: 'my_media',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyMediaRow),
   myObservations: __table({
     name: 'my_observations',
     indexes: [
@@ -232,6 +251,7 @@ const reducersSchema = __reducers(
   __reducerSchema("advance_incident", AdvanceIncidentReducer),
   __reducerSchema("append_revision", AppendRevisionReducer),
   __reducerSchema("claim_outbox", ClaimOutboxReducer),
+  __reducerSchema("complete_assistance", CompleteAssistanceReducer),
   __reducerSchema("complete_delivery", CompleteDeliveryReducer),
   __reducerSchema("create_report", CreateReportReducer),
   __reducerSchema("deliver_task", DeliverTaskReducer),
@@ -239,6 +259,8 @@ const reducersSchema = __reducers(
   __reducerSchema("record_expert_verification", RecordExpertVerificationReducer),
   __reducerSchema("record_finding", RecordFindingReducer),
   __reducerSchema("record_intervention", RecordInterventionReducer),
+  __reducerSchema("register_media", RegisterMediaReducer),
+  __reducerSchema("reserve_assistance", ReserveAssistanceReducer),
   __reducerSchema("seed_demo", SeedDemoReducer),
   __reducerSchema("seed_flagship", SeedFlagshipReducer),
   __reducerSchema("submit_observation", SubmitObservationReducer),
