@@ -43,7 +43,8 @@ const assistance=table({name:'assistance'},{id:t.string().primaryKey(),owner:t.i
 const policyAssignment=table({name:'policy_assignment'},{id:t.string().primaryKey(),siteId:t.string(),policyKey:t.string()});
 const sourceRegistration=table({name:'source_registration'},{identity:t.identity().primaryKey(),lineage:t.string(),reason:t.string(),at:t.timestamp()});
 const demoSeeder=table({name:'demo_seeder'},{identity:t.identity().primaryKey(),reason:t.string(),at:t.timestamp()});
-const db = schema({ role, observation, incident, incidentEvent, outbox, mission,evidenceRecord,validationRecord,policyRecord,weatherContext,ruleExecution,finding,intervention,verification,delivery,mediaArtifact,monitoringSite,routedTask,assistance,policyAssignment,sourceRegistration,demoSeeder });
+const dispatchLaunch=table({name:'dispatch_launch'},{outboxId:t.u64().primaryKey(),launchId:t.string(),runId:t.string(),at:t.timestamp()});
+const db = schema({ role, observation, incident, incidentEvent, outbox, mission,evidenceRecord,validationRecord,policyRecord,weatherContext,ruleExecution,finding,intervention,verification,delivery,mediaArtifact,monitoringSite,routedTask,assistance,policyAssignment,sourceRegistration,demoSeeder,dispatchLaunch });
 export default db;
 type Context=ReducerCtx<typeof db.schemaType>;
 
@@ -95,6 +96,9 @@ export const serviceOutbox=db.view({name:'service_outbox',public:true},t.array(o
 export const serviceIncidents=db.view({name:'service_incidents',public:true},t.array(incident.rowType),ctx=>ctx.db.role.identity.find(ctx.sender)?.kind==='service'?[...ctx.db.incident.iter()]:[]);
 export const serviceEvidence=db.view({name:'service_evidence',public:true},t.array(evidenceRecord.rowType),ctx=>ctx.db.role.identity.find(ctx.sender)?.kind==='service'?[...ctx.db.evidenceRecord.iter()]:[]);
 export const serviceSites=db.view({name:'service_sites',public:true},t.array(monitoringSite.rowType),ctx=>ctx.db.role.identity.find(ctx.sender)?.kind==='service'?[...ctx.db.monitoringSite.iter()]:[]);
+export const serviceWeatherPolicies=db.view({name:'service_weather_policies',public:true},t.array(policyRecord.rowType),ctx=>ctx.db.role.identity.find(ctx.sender)?.kind==='service'?[...ctx.db.policyRecord.iter()]:[]);
+export const servicePolicyAssignments=db.view({name:'service_policy_assignments',public:true},t.array(policyAssignment.rowType),ctx=>ctx.db.role.identity.find(ctx.sender)?.kind==='service'?[...ctx.db.policyAssignment.iter()]:[]);
+export const serviceDispatchLaunches=db.view({name:'service_dispatch_launches',public:true},t.array(dispatchLaunch.rowType),ctx=>ctx.db.role.identity.find(ctx.sender)?.kind==='service'?[...ctx.db.dispatchLaunch.iter()]:[]);
 export const demoTasks=db.anonymousView({name:'demo_tasks',public:true},t.array(routedTask.rowType),ctx=>[...ctx.db.routedTask.iter()].filter(task=>task.synthetic));
 export const myTasks=db.view({name:'my_tasks',public:true},t.array(routedTask.rowType),ctx=>{
   const kind=ctx.db.role.identity.find(ctx.sender)?.kind;
@@ -149,6 +153,13 @@ function runPolicy(ctx:Context,siteId:string,policy:Policy):Trace{
   ctx.db.outbox.insert({id:0n,kind:trace.route==='environmental-officer'?'environmental-task':'ecological-task',aggregateId:id,idempotencyKey:`${id}:route`,payload:JSON.stringify({incidentId:id,route:trace.route,traceId:trace.id,synthetic:policy.synthetic}),status:'pending',at:ctx.timestamp});
   return trace;
 }
+function queueWeather(ctx:Context,siteId:string,policy:Policy){
+  if(policy.synthetic||policy.windowMinutes<60||policy.windowMinutes%60!==0)return;
+  const hour=ctx.timestamp.microsSinceUnixEpoch/3600000000n;
+  const idempotencyKey=`weather:${siteId}:${policy.id}@${policy.version}:${hour}`;
+  if([...ctx.db.outbox.iter()].some(o=>o.idempotencyKey===idempotencyKey))return;
+  ctx.db.outbox.insert({id:0n,kind:'weather-enrichment',aggregateId:siteId,idempotencyKey,payload:JSON.stringify({siteId,periodMinutes:policy.windowMinutes,policyId:policy.id,policyVersion:policy.version}),status:'pending',at:ctx.timestamp});
+}
 export const createReport=db.reducer({payload:t.string()},(ctx,{payload})=>{
   if(payload.length>12000)throw new Error('VALIDATION_ERROR');
   const input=reportSchema.parse(JSON.parse(payload));
@@ -157,7 +168,7 @@ export const createReport=db.reducer({payload:t.string()},(ctx,{payload})=>{
   const e=persistEvidence(ctx,input,site.synthetic,ctx.sender.toHexString());
   if(site.synthetic){ensurePolicy(ctx);runPolicy(ctx,e.siteId,DEMO_POLICY);return;}
   // Real-world rules activate only when a sourced local policy is configured.
-  for(const assignment of ctx.db.policyAssignment.iter())if(assignment.siteId===e.siteId){const record=ctx.db.policyRecord.id.find(assignment.policyKey);if(record&&!record.synthetic)runPolicy(ctx,e.siteId,JSON.parse(record.payload) as Policy);}
+  for(const assignment of ctx.db.policyAssignment.iter())if(assignment.siteId===e.siteId){const record=ctx.db.policyRecord.id.find(assignment.policyKey);if(record&&!record.synthetic){const policy=JSON.parse(record.payload) as Policy;queueWeather(ctx,e.siteId,policy);runPolicy(ctx,e.siteId,policy);}}
 });
 export const appendRevision=db.reducer({payload:t.string()},(ctx,{payload})=>{
   if(payload.length>12000)throw new Error('VALIDATION_ERROR');
@@ -230,6 +241,16 @@ function seedScenarioInputs(ctx:Context,runId:string){
 export const seedFlagship=db.reducer(ctx=>seedScenarioInputs(ctx,''));
 export const seedScenario=db.reducer({runId:t.string()},(ctx,{runId})=>{if(!/^[A-Za-z0-9-]{3,40}$/.test(runId))throw new Error('VALIDATION_ERROR');seedScenarioInputs(ctx,runId)});
 export const grantDemoSeeder=db.reducer({identity:t.identity(),reason:t.string()},(ctx,{identity,reason})=>{if(!owner(ctx))throw new Error('AUTHORIZATION_DENIED');clean(reason,1000);if(!ctx.db.demoSeeder.identity.find(identity))ctx.db.demoSeeder.insert({identity,reason,at:ctx.timestamp})});
+export const storeWeather=db.reducer({payload:t.string()},(ctx,{payload})=>{
+  if(ctx.db.role.identity.find(ctx.sender)?.kind!=='service')throw new Error('AUTHORIZATION_DENIED');
+  if(payload.length>5000)throw new Error('VALIDATION_ERROR');
+  const w=z.object({id:z.string().regex(/^[a-f0-9]{64}$/),siteId:z.string().max(120),observedAt:z.string().datetime(),precipitationMm:z.number().nonnegative().finite(),synthetic:z.literal(false),source:z.literal('Open-Meteo modelled rainfall; not a rain-gauge measurement'),methodVersion:z.literal('open-meteo-hourly-rain-v1'),periodMinutes:z.number().int().min(60).max(10080),intervalStart:z.string().datetime(),fetchedAt:z.string().datetime(),sourceUrl:z.string().url().startsWith('https://api.open-meteo.com/v1/forecast?'),unit:z.literal('mm'),contextKind:z.literal('modelled-rainfall')}).strict().parse(JSON.parse(payload));
+  const site=ctx.db.monitoringSite.id.find(w.siteId);if(!site||site.synthetic)throw new Error('WEATHER_SITE_MISMATCH');
+  const end=Date.parse(w.observedAt);if(end>Date.parse(ctx.timestamp.toISOString())||end-Date.parse(w.intervalStart)!==w.periodMinutes*60000)throw new Error('WEATHER_INTERVAL_INVALID');
+  if(ctx.db.weatherContext.id.find(w.id))return;
+  ctx.db.weatherContext.insert({id:w.id,siteId:w.siteId,synthetic:false,payload:JSON.stringify(w)});
+  for(const assignment of ctx.db.policyAssignment.iter())if(assignment.siteId===w.siteId){const record=ctx.db.policyRecord.id.find(assignment.policyKey);if(record&&!record.synthetic)runPolicy(ctx,w.siteId,JSON.parse(record.payload) as Policy);}
+});
 
 export const claimOutbox=db.reducer({id:t.u64()},(ctx,{id})=>{
   if(ctx.db.role.identity.find(ctx.sender)?.kind!=='service')throw new Error('AUTHORIZATION_DENIED');
@@ -239,6 +260,29 @@ export const claimOutbox=db.reducer({id:t.u64()},(ctx,{id})=>{
   const row={idempotencyKey:message.idempotencyKey,outboxId:id,status:'processing',attempts:(prior?.attempts??0)+1,receipt:prior?.receipt??'',lastError:'',at:ctx.timestamp};
   if(prior)ctx.db.delivery.idempotencyKey.update(row);else ctx.db.delivery.insert(row);
   ctx.db.outbox.id.update({...message,status:'processing'});
+});
+// Reserve before starting a paid durable run; interrupted launches expire.
+export const reserveDispatch=db.reducer({id:t.u64(),launchId:t.string()},(ctx,{id,launchId})=>{
+  if(ctx.db.role.identity.find(ctx.sender)?.kind!=='service')throw new Error('AUTHORIZATION_DENIED');
+  clean(launchId,100);const message=ctx.db.outbox.id.find(id);
+  if(!message||['delivered','dead'].includes(message.status))throw new Error('DISPATCH_NOT_REQUIRED');
+  const prior=ctx.db.dispatchLaunch.outboxId.find(id);
+  if(prior&&ctx.timestamp.microsSinceUnixEpoch-prior.at.microsSinceUnixEpoch<900000000n)throw new Error('DISPATCH_RESERVED');
+  const row={outboxId:id,launchId,runId:'',at:ctx.timestamp};
+  if(prior)ctx.db.dispatchLaunch.outboxId.update(row);else ctx.db.dispatchLaunch.insert(row);
+});
+export const recordDispatchRun=db.reducer({id:t.u64(),launchId:t.string(),runId:t.string()},(ctx,{id,launchId,runId})=>{
+  if(ctx.db.role.identity.find(ctx.sender)?.kind!=='service')throw new Error('AUTHORIZATION_DENIED');
+  const prior=ctx.db.dispatchLaunch.outboxId.find(id);if(!prior||prior.launchId!==launchId)throw new Error('DISPATCH_RESERVATION_LOST');
+  clean(runId,200);ctx.db.dispatchLaunch.outboxId.update({...prior,runId});
+});
+export const retryDeadDelivery=db.reducer({id:t.u64(),reason:t.string()},(ctx,{id,reason})=>{
+  if(!officer(ctx))throw new Error('AUTHORIZATION_DENIED');clean(reason,1000);
+  const message=ctx.db.outbox.id.find(id);if(!message||message.status!=='dead')throw new Error('DELIVERY_NOT_DEAD');
+  const prior=ctx.db.delivery.idempotencyKey.find(message.idempotencyKey);if(!prior)throw new Error('CONFLICT');
+  ctx.db.delivery.idempotencyKey.update({...prior,status:'retry',attempts:0,lastError:'OPERATOR_RETRY',at:ctx.timestamp});
+  ctx.db.outbox.id.update({...message,status:'retry'});ctx.db.dispatchLaunch.outboxId.delete(id);
+  const i=ctx.db.incident.id.find(message.aggregateId);if(i)ctx.db.incidentEvent.insert({id:0n,incidentId:i.id,fromState:i.state,toState:i.state,actor:ctx.sender,reason:`Delivery retry authorized: ${reason}`,at:ctx.timestamp});
 });
 export const completeDelivery=db.reducer({id:t.u64(),status:t.string(),receipt:t.string(),errorCode:t.string()},(ctx,{id,status,receipt,errorCode})=>{
   if(ctx.db.role.identity.find(ctx.sender)?.kind!=='service'||!['delivered','retry','dead'].includes(status))throw new Error('AUTHORIZATION_DENIED');
@@ -285,7 +329,7 @@ export const registerMedia=db.reducer({id:t.string(),ownerIdentity:t.identity(),
 });
 export const reserveAssistance=db.reducer({id:t.string(),ownerIdentity:t.identity(),purpose:t.string(),model:t.string(),inputHash:t.string()},(ctx,input)=>{
   if(ctx.db.role.identity.find(ctx.sender)?.kind!=='service')throw new Error('AUTHORIZATION_DENIED');
-  if(!['field-extraction','voice-session','visible-media-triage','rule-explanation'].includes(input.purpose)||input.model.length>120||!/^([a-f0-9]{64})$/.test(input.inputHash))throw new Error('VALIDATION_ERROR');
+  if(!['field-extraction','voice-session','voice-guidance','visible-media-triage','rule-explanation'].includes(input.purpose)||input.model.length>120||!/^([a-f0-9]{64})$/.test(input.inputHash))throw new Error('VALIDATION_ERROR');
   const recent=[...ctx.db.assistance.iter()].filter(a=>a.owner.toHexString()===input.ownerIdentity.toHexString()&&ctx.timestamp.microsSinceUnixEpoch-a.at.microsSinceUnixEpoch<3600000000n);
   if(recent.length>=20)throw new Error('RATE_LIMITED');
   ctx.db.assistance.insert({id:input.id,owner:input.ownerIdentity,purpose:input.purpose,model:input.model,inputHash:input.inputHash,status:'pending',payload:'',at:ctx.timestamp});
@@ -321,6 +365,7 @@ export const refreshMonitoring=db.reducer(ctx=>{
     const assigned=[...ctx.db.policyAssignment.iter()].find(a=>a.siteId===site.id);
     const record=assigned?ctx.db.policyRecord.id.find(assigned.policyKey):null;
     const policy=site.synthetic?DEMO_POLICY:record?JSON.parse(record.payload) as Policy:null;if(!policy)continue;
+    if(!site.synthetic)queueWeather(ctx,site.id,policy);
     const eligible=allEvidence.filter(e=>e.siteId===site.id&&e.synthetic===site.synthetic&&(e.synthetic||e.sourceVerified)&&validateEvidence(e,ctx.timestamp.toISOString(),policy).eligible);
     const independent=independentGroups(eligible),id=`gap-${site.id}`;
     const mission=ctx.db.mission.id.find(id);

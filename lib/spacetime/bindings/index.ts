@@ -46,6 +46,7 @@ import DeliverTaskReducer from "./deliver_task_reducer";
 import FlagAcknowledgementTimeoutReducer from "./flag_acknowledgement_timeout_reducer";
 import GrantDemoSeederReducer from "./grant_demo_seeder_reducer";
 import GrantRoleReducer from "./grant_role_reducer";
+import RecordDispatchRunReducer from "./record_dispatch_run_reducer";
 import RecordExpertVerificationReducer from "./record_expert_verification_reducer";
 import RecordFindingReducer from "./record_finding_reducer";
 import RecordInterventionReducer from "./record_intervention_reducer";
@@ -54,9 +55,12 @@ import RegisterMediaReducer from "./register_media_reducer";
 import RegisterSourceReducer from "./register_source_reducer";
 import RequestFhirExportReducer from "./request_fhir_export_reducer";
 import ReserveAssistanceReducer from "./reserve_assistance_reducer";
+import ReserveDispatchReducer from "./reserve_dispatch_reducer";
+import RetryDeadDeliveryReducer from "./retry_dead_delivery_reducer";
 import SeedDemoReducer from "./seed_demo_reducer";
 import SeedFlagshipReducer from "./seed_flagship_reducer";
 import SeedScenarioReducer from "./seed_scenario_reducer";
+import StoreWeatherReducer from "./store_weather_reducer";
 import SubmitObservationReducer from "./submit_observation_reducer";
 import TransitionIncidentReducer from "./transition_incident_reducer";
 
@@ -83,10 +87,13 @@ import PublicDemoIncidentsRow from "./public_demo_incidents_table";
 import ReviewObservationsRow from "./review_observations_table";
 import ScienceEvidenceRow from "./science_evidence_table";
 import ScienceValidationRow from "./science_validation_table";
+import ServiceDispatchLaunchesRow from "./service_dispatch_launches_table";
 import ServiceEvidenceRow from "./service_evidence_table";
 import ServiceIncidentsRow from "./service_incidents_table";
 import ServiceOutboxRow from "./service_outbox_table";
+import ServicePolicyAssignmentsRow from "./service_policy_assignments_table";
 import ServiceSitesRow from "./service_sites_table";
+import ServiceWeatherPoliciesRow from "./service_weather_policies_table";
 
 /** Type-only namespace exports for generated type groups. */
 
@@ -232,6 +239,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, ScienceValidationRow),
+  serviceDispatchLaunches: __table({
+    name: 'service_dispatch_launches',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ServiceDispatchLaunchesRow),
   serviceEvidence: __table({
     name: 'service_evidence',
     indexes: [
@@ -253,6 +267,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, ServiceOutboxRow),
+  servicePolicyAssignments: __table({
+    name: 'service_policy_assignments',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ServicePolicyAssignmentsRow),
   serviceSites: __table({
     name: 'service_sites',
     indexes: [
@@ -260,6 +281,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, ServiceSitesRow),
+  serviceWeatherPolicies: __table({
+    name: 'service_weather_policies',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ServiceWeatherPoliciesRow),
 });
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
@@ -276,6 +304,7 @@ const reducersSchema = __reducers(
   __reducerSchema("flag_acknowledgement_timeout", FlagAcknowledgementTimeoutReducer),
   __reducerSchema("grant_demo_seeder", GrantDemoSeederReducer),
   __reducerSchema("grant_role", GrantRoleReducer),
+  __reducerSchema("record_dispatch_run", RecordDispatchRunReducer),
   __reducerSchema("record_expert_verification", RecordExpertVerificationReducer),
   __reducerSchema("record_finding", RecordFindingReducer),
   __reducerSchema("record_intervention", RecordInterventionReducer),
@@ -284,9 +313,12 @@ const reducersSchema = __reducers(
   __reducerSchema("register_source", RegisterSourceReducer),
   __reducerSchema("request_fhir_export", RequestFhirExportReducer),
   __reducerSchema("reserve_assistance", ReserveAssistanceReducer),
+  __reducerSchema("reserve_dispatch", ReserveDispatchReducer),
+  __reducerSchema("retry_dead_delivery", RetryDeadDeliveryReducer),
   __reducerSchema("seed_demo", SeedDemoReducer),
   __reducerSchema("seed_flagship", SeedFlagshipReducer),
   __reducerSchema("seed_scenario", SeedScenarioReducer),
+  __reducerSchema("store_weather", StoreWeatherReducer),
   __reducerSchema("submit_observation", SubmitObservationReducer),
   __reducerSchema("transition_incident", TransitionIncidentReducer),
 );

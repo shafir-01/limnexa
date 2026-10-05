@@ -80,6 +80,14 @@ export type DemoSeeder = __Infer<typeof DemoSeeder>;
 export const DemoTasks = __t.object("DemoTasks", {});
 export type DemoTasks = __Infer<typeof DemoTasks>;
 
+export const DispatchLaunch = __t.object("DispatchLaunch", {
+  outboxId: __t.u64(),
+  launchId: __t.string(),
+  runId: __t.string(),
+  at: __t.timestamp(),
+});
+export type DispatchLaunch = __Infer<typeof DispatchLaunch>;
+
 export const EvidenceRecord = __t.object("EvidenceRecord", {
   id: __t.string(),
   owner: __t.identity(),
@@ -300,6 +308,9 @@ export type ScienceEvidence = __Infer<typeof ScienceEvidence>;
 export const ScienceValidation = __t.object("ScienceValidation", {});
 export type ScienceValidation = __Infer<typeof ScienceValidation>;
 
+export const ServiceDispatchLaunches = __t.object("ServiceDispatchLaunches", {});
+export type ServiceDispatchLaunches = __Infer<typeof ServiceDispatchLaunches>;
+
 export const ServiceEvidence = __t.object("ServiceEvidence", {});
 export type ServiceEvidence = __Infer<typeof ServiceEvidence>;
 
@@ -309,8 +320,14 @@ export type ServiceIncidents = __Infer<typeof ServiceIncidents>;
 export const ServiceOutbox = __t.object("ServiceOutbox", {});
 export type ServiceOutbox = __Infer<typeof ServiceOutbox>;
 
+export const ServicePolicyAssignments = __t.object("ServicePolicyAssignments", {});
+export type ServicePolicyAssignments = __Infer<typeof ServicePolicyAssignments>;
+
 export const ServiceSites = __t.object("ServiceSites", {});
 export type ServiceSites = __Infer<typeof ServiceSites>;
+
+export const ServiceWeatherPolicies = __t.object("ServiceWeatherPolicies", {});
+export type ServiceWeatherPolicies = __Infer<typeof ServiceWeatherPolicies>;
 
 export const SourceRegistration = __t.object("SourceRegistration", {
   identity: __t.identity(),

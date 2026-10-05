@@ -3,6 +3,7 @@ import {serviceToken,withConnection} from '../spacetime/connect';
 import {loadExport} from '../fhir/load';
 import {deliverBundle} from '../fhir/delivery';
 import type {Trace} from '../domain/core';
+import {fetchRain} from '../weather/open-meteo';
 
 async function claim(id:string){
   'use step';
@@ -16,6 +17,14 @@ async function claim(id:string){
 }
 async function deliver(message:{id:string;messageKind:string;idempotencyKey:string;aggregateId:string;payload:string}){
   'use step';
+  if(message.messageKind==='weather-enrichment'){
+    const site=await withConnection(serviceToken(),['SELECT * FROM service_sites'],conn=>conn.db.serviceSites.id.find(message.aggregateId));
+    if(!site||site.synthetic)throw new FatalError('REAL_WEATHER_SITE_REQUIRED');
+    const input=JSON.parse(message.payload) as {periodMinutes:number};
+    const weather=await fetchRain(site,input.periodMinutes);
+    await withConnection(serviceToken(),[],conn=>conn.reducers.storeWeather({payload:JSON.stringify(weather)}));
+    return `weather:${weather.id}`;
+  }
   if(message.messageKind==='fhir-export'){
     const destination=process.env.FHIR_DESTINATION_URL;if(!destination)throw new FatalError('FHIR_DESTINATION_NOT_CONFIGURED');
     const snapshot=JSON.parse(message.payload) as {state:string;trace:Trace;evidenceIds:string};

@@ -6,6 +6,7 @@ import {fieldDatabase,type FieldDraft} from '@/lib/offline/drafts';
 import {reportSchema,type Evidence,type ReportInput} from '@/lib/domain/core';
 import dynamic from 'next/dynamic';
 import {MediaUpload} from './media-upload';
+import {ProtocolGuide} from './protocol-guide';
 import type {SiteInput} from '@/lib/domain/core';
 const VoiceCapture=dynamic(()=>import('./voice'),{ssr:false});
 
@@ -58,6 +59,7 @@ export function ReportForm(){
     <button className="quiet-button" type="button" disabled={pending||!draft.siteId} onClick={captureLocation}>Capture GPS position and accuracy</button>
     <p className="small muted">{draft.gpsAccuracyM===null?'No GPS captured. Coordinates currently describe the selected site, and the report will require spatial review.':`Captured coordinates ${draft.latitude.toFixed(5)}, ${draft.longitude.toFixed(5)} · reported accuracy ${Math.round(draft.gpsAccuracyM)} m`}</p>
     <div className="field"><label htmlFor="category">Observation category</label><select id="category" value={draft.category} disabled={pending} onChange={e=>change({category:e.target.value as ReportInput['category']})}><option value="other">Other / uncertain</option><option value="wastewater-indicator">Visible or sensed wastewater indicator</option><option value="ecological">Ecological condition</option></select></div>
+    <ProtocolGuide category={draft.category} instrument={!!draft.measurement}/>
     <div className="field"><label htmlFor="description">Describe what you directly observed</label><textarea id="description" value={draft.description} disabled={pending} onChange={e=>change({description:e.target.value})}/></div>
     {!pending&&<VoiceCapture onConfirm={description=>change({description})}/>}
     {!pending&&<MediaUpload siteId={draft.siteId} onUploaded={hash=>change({mediaHashes:[...new Set([...draft.mediaHashes,hash])].slice(0,5)})}/>}
