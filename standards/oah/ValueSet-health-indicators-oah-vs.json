@@ -1,0 +1,263 @@
+{
+  "resourceType": "ValueSet",
+  "status": "draft",
+  "name": "HealthIndicatorsOahVs",
+  "id": "health-indicators-oah-vs",
+  "title": "OAH Health Indicators",
+  "description": "This Value Set is used to identify the health and wellness indicators adopted by this project.",
+  "url": "http://hl7.eu/fhir/ig/oah/ValueSet/health-indicators-oah-vs",
+  "experimental": true,
+  "compose": {
+    "include": [
+      {
+        "system": "http://hl7.eu/fhir/ig/oah/CodeSystem/temporarySystem-oah-eu",
+        "concept": [
+          {
+            "code": "disease-prevalence",
+            "display": "Cases of disease prevalence"
+          },
+          {
+            "code": "high-blood-pression",
+            "display": "% of people with high blood pressure (prevalence)"
+          },
+          {
+            "code": "hypertension",
+            "display": "% of people under treatment for hypertension"
+          },
+          {
+            "code": "high-blood-pression-treatment",
+            "display": "% of people under treatment for high blood pressure"
+          },
+          {
+            "code": "obesity",
+            "display": "% of people affected from obesity"
+          },
+          {
+            "code": "cholesterolemia-190",
+            "display": "% of people with high total cholesterolemia (>=190 mg/dl)"
+          },
+          {
+            "code": "hypercholesterolemia-treatment",
+            "display": "% of people under treatment for hypercholesterolemia"
+          },
+          {
+            "code": "cholesterolemia-240",
+            "display": "% of people with high total cholesterolemia (>=240 mg/dl)"
+          },
+          {
+            "code": "diabetes",
+            "display": "% of people with high blood sugar/diabetes"
+          },
+          {
+            "code": "diabetes-treatment",
+            "display": "% of people under treatment for diabetes"
+          },
+          {
+            "code": "no-physical-activity",
+            "display": "% of people not engaging in physical activity"
+          },
+          {
+            "code": "cvd",
+            "display": "% of people affected from CVD"
+          },
+          {
+            "code": "gastrointestinal",
+            "display": "% of people with Cases of Gastrointestinal diseases"
+          },
+          {
+            "code": "long-term-disease",
+            "display": "% of people with long-term disease"
+          },
+          {
+            "code": "no-long-term-disease",
+            "display": "% of people without long-term disease"
+          },
+          {
+            "code": "bmi-below-18",
+            "display": "% of people with BMI <18,5"
+          },
+          {
+            "code": "bmi-below-25",
+            "display": "% of people with BMI 18,5-24,9"
+          },
+          {
+            "code": "bmi-below-30",
+            "display": "% of people with BMI 25-29,9"
+          },
+          {
+            "code": "bmi-above-30",
+            "display": "% of people with BMI =>30"
+          },
+          {
+            "code": "diabate-copd-cvd",
+            "display": "% of people that have or have had Diabetes, COPD or Cardiovascular disease"
+          },
+          {
+            "code": "no-diabate-copd-cvd",
+            "display": "% of people that do not have Diabetes, COPD or Cardiovascular disease"
+          },
+          {
+            "code": "mental-health",
+            "display": "% of people experience with mental health issues"
+          },
+          {
+            "code": "borrelia",
+            "display": "% of people with Borrelia Burgdoferi"
+          },
+          {
+            "code": "campylobacter",
+            "display": "% of people with Campylobacter"
+          },
+          {
+            "code": "chlamydia",
+            "display": "% of people with Chlamydia Psittaci"
+          },
+          {
+            "code": "cryptosporidium",
+            "display": "% of people with Cryptosporidium"
+          },
+          {
+            "code": "entamoeba",
+            "display": "% of people with Entamoeba histolytica"
+          },
+          {
+            "code": "escherichia-coli",
+            "display": "% of people with Escherichia Coli"
+          },
+          {
+            "code": "giarda",
+            "display": "% of people with Giarda"
+          },
+          {
+            "code": "salmonella",
+            "display": "% of people with Salmonella"
+          },
+          {
+            "code": "yersinia-enterocolitica",
+            "display": "% of people with Yersinia enterocolitica"
+          },
+          {
+            "code": "tbc",
+            "display": "% of deaths due to TBC"
+          },
+          {
+            "code": "viral-hepatitis",
+            "display": "% of deaths due to Viral Hepatitis"
+          },
+          {
+            "code": "infective-and-parasitic",
+            "display": "% of deaths due to infective and parasitic diseases"
+          },
+          {
+            "code": "blood-and-hematopoietic-organs",
+            "display": "% of deaths due to diseases of the blood and hematopoietic organs"
+          },
+          {
+            "code": "diabetes-mellitus",
+            "display": "% of deaths due to Diabetes Mellitus"
+          },
+          {
+            "code": "endocrine-nutritional-metabolic",
+            "display": "% of deaths due to endocrine, nutritional and metabolic diseases"
+          },
+          {
+            "code": "ischemic-heart",
+            "display": "% of deaths due to ischemic diseases of the heart"
+          },
+          {
+            "code": "other-heart",
+            "display": "% of deaths due to other diseases of the heart"
+          },
+          {
+            "code": "other-circulatory-system",
+            "display": "% of deaths due to other diseases of the circulatory system"
+          },
+          {
+            "code": "pneumonia",
+            "display": "% of deaths due to Pneumonia"
+          },
+          {
+            "code": "chronic-lower-respiratory",
+            "display": "% of deaths due to chronic diseases of the lower respiratory tract"
+          },
+          {
+            "code": "other-respiratory-system",
+            "display": "% of deaths due to other diseases of the respiratory system"
+          },
+          {
+            "code": "skin-subcutaneous-tissue",
+            "display": "% of deaths due to diseases of the skin and subcutaneous tissue"
+          },
+          {
+            "code": "accidental-poisoning",
+            "display": "% of deaths due to accidental poisoning"
+          },
+          {
+            "code": "malignant-tumor",
+            "display": "% of deaths due to Malignant Tumors"
+          },
+          {
+            "code": "healthcare-sensitive-causes",
+            "display": "% of deaths due to Healthcare-Sensitive Causes"
+          },
+          {
+            "code": "winter-excess",
+            "display": "% of Excess Mortality in Winter"
+          },
+          {
+            "code": "all-causes",
+            "display": "% of deaths due to all causes"
+          },
+          {
+            "code": "cancer",
+            "display": "% of deaths due to cancer"
+          },
+          {
+            "code": "diabetes-deaths",
+            "display": "% of deaths due to diabetes"
+          },
+          {
+            "code": "cardiovascular",
+            "display": "% of deaths due to cardiovascular disease"
+          },
+          {
+            "code": "respiratory",
+            "display": "% of deaths due to respiratory disease"
+          },
+          {
+            "code": "copd-lung-cancer",
+            "display": "% of deaths due to COPD and lung cancer"
+          },
+          {
+            "code": "hospitalization-diabetes-mellitus",
+            "display": "% of hospitalizations due to Diabetes Mellitus"
+          },
+          {
+            "code": "hospitalization-malignant-tumor",
+            "display": "% of hospitalizations due to malignant tumors"
+          },
+          {
+            "code": "hospitalization-hypertension",
+            "display": "% of hospitalizations due to Hypertension"
+          },
+          {
+            "code": "hospitalization-cardiovascular",
+            "display": "% of hospitalizations due to Circulatory System Diseases"
+          },
+          {
+            "code": "hospitalization-respiratory",
+            "display": "% of hospitalizations due to respiratory diseases"
+          },
+          {
+            "code": "hospitalization-asthma",
+            "display": "% of hospitalizations for Asthma"
+          },
+          {
+            "code": "hospitalization-avoidable-primary-prevention",
+            "display": "% of hospitalizations avoidable by primary prevention"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "resourceType": "StructureDefinition",
+  "id": "location-oah",
+  "url": "http://hl7.eu/fhir/ig/oah/StructureDefinition/location-oah",
+  "name": "LocationOah",
+  "title": "Location: OAH Indicators",
+  "status": "draft",
+  "description": "It defines the rules to be applied to the Location for the purpose of the OneAquaHealth project.",
+  "fhirVersion": "4.0.1",
+  "kind": "resource",
+  "abstract": false,
+  "type": "Location",
+  "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Location",
+  "derivation": "constraint",
+  "differential": {
+    "element": [
+      {
+        "id": "Location.extension",
+        "path": "Location.extension",
+        "slicing": {
+          "discriminator": [
+            {
+              "type": "value",
+              "path": "url"
+            }
+          ],
+          "ordered": false,
+          "rules": "open"
+        }
+      },
+      {
+        "id": "Location.extension:referenceForm",
+        "path": "Location.extension",
+        "sliceName": "referenceForm",
+        "min": 0,
+        "max": "*",
+        "type": [
+          {
+            "code": "Extension",
+            "profile": [
+              "http://hl7.org/fhir/StructureDefinition/artifact-relatedArtifact"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "Location.identifier",
+        "path": "Location.identifier",
+        "short": "Location identifier",
+        "min": 1
+      },
+      {
+        "id": "Location.name",
+        "path": "Location.name",
+        "short": "Location name",
+        "min": 1
+      },
+      {
+        "id": "Location.mode",
+        "path": "Location.mode",
+        "min": 1,
+        "patternCode": "instance"
+      },
+      {
+        "id": "Location.type",
+        "path": "Location.type",
+        "short": "Location type"
+      },
+      {
+        "id": "Location.position",
+        "path": "Location.position",
+        "short": "Location position"
+      },
+      {
+        "id": "Location.position.longitude",
+        "path": "Location.position.longitude",
+        "short": "Location longitude"
+      },
+      {
+        "id": "Location.position.latitude",
+        "path": "Location.position.latitude",
+        "short": "Location latitude"
+      }
+    ]
+  }
+}

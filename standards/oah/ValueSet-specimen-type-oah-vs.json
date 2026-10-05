@@ -1,0 +1,23 @@
+{
+  "resourceType": "ValueSet",
+  "status": "draft",
+  "name": "SpecimenTypeOahVs",
+  "id": "specimen-type-oah-vs",
+  "title": "OAH Specimen Type",
+  "description": "This Value Set is used to identify the indicators adopted by this project.",
+  "url": "http://hl7.eu/fhir/ig/oah/ValueSet/specimen-type-oah-vs",
+  "experimental": false,
+  "compose": {
+    "include": [
+      {
+        "system": "http://snomed.info/sct",
+        "concept": [
+          {
+            "code": "11713004",
+            "display": "Water"
+          }
+        ]
+      }
+    ]
+  }
+}

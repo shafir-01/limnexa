@@ -1,0 +1,1 @@
+{"resourceType":"CodeSystem","id":"data-class","url":"https://limnexa.vercel.app/fhir/CodeSystem/data-class","version":"1.0.0","name":"LimnexaDataClass","status":"active","experimental":true,"caseSensitive":true,"content":"complete","concept":[{"code":"synthetic","display":"Synthetic demonstration data"},{"code":"environmental","display":"Environmental evidence"}]}

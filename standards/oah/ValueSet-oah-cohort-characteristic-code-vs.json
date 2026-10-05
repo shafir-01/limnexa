@@ -1,0 +1,27 @@
+{
+  "resourceType": "ValueSet",
+  "status": "draft",
+  "name": "OahCohortCharacteristicCodeVs",
+  "id": "oah-cohort-characteristic-code-vs",
+  "title": "OAH Cohort Characteristic Code",
+  "description": "Codes used to describe inclusion or exclusion criteria for person cohorts (for example, age or sex).",
+  "url": "http://hl7.eu/fhir/ig/oah/ValueSet/oah-cohort-characteristic-code-vs",
+  "experimental": false,
+  "compose": {
+    "include": [
+      {
+        "system": "http://loinc.org",
+        "concept": [
+          {
+            "code": "30525-0",
+            "display": "Age"
+          },
+          {
+            "code": "46098-0",
+            "display": "Sex"
+          }
+        ]
+      }
+    ]
+  }
+}

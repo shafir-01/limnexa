@@ -1,0 +1,26 @@
+{
+  "resourceType": "ValueSet",
+  "status": "draft",
+  "name": "OahIndicatorsNoHealthOahVs",
+  "id": "oah-indicators-no-health-oah-vs",
+  "title": "OAH Indicators (Non-Health)",
+  "description": "This Value Set includes OAH Indicators excluding the health and wellness indicators.",
+  "url": "http://hl7.eu/fhir/ig/oah/ValueSet/oah-indicators-no-health-oah-vs",
+  "experimental": true,
+  "compose": {
+    "include": [
+      {
+        "valueSet": [
+          "http://hl7.eu/fhir/ig/oah/ValueSet/temporarySystem-oah-eu"
+        ]
+      }
+    ],
+    "exclude": [
+      {
+        "valueSet": [
+          "http://hl7.eu/fhir/ig/oah/ValueSet/health-indicators-oah-vs"
+        ]
+      }
+    ]
+  }
+}

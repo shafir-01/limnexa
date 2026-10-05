@@ -1,0 +1,31 @@
+{
+  "resourceType": "ValueSet",
+  "status": "draft",
+  "name": "MacrophytesIndicatorValueOahVs",
+  "id": "macrophytes-indicator-value-oah-vs",
+  "title": "OAH Macrophytes Indicator Values",
+  "description": "This Value Set is used to identify the indicators adopted by this project.",
+  "url": "http://hl7.eu/fhir/ig/oah/ValueSet/macrophytes-indicator-value-oah-vs",
+  "experimental": false,
+  "compose": {
+    "include": [
+      {
+        "system": "http://hl7.eu/fhir/ig/oah/CodeSystem/temporarySystem-oah-eu",
+        "concept": [
+          {
+            "code": "absent",
+            "display": "Absent"
+          },
+          {
+            "code": "present",
+            "display": "Present"
+          },
+          {
+            "code": "extensive",
+            "display": "Extensive"
+          }
+        ]
+      }
+    ]
+  }
+}

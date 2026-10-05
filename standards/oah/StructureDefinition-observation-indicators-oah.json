@@ -1,0 +1,107 @@
+{
+  "resourceType": "StructureDefinition",
+  "id": "observation-indicators-oah",
+  "url": "http://hl7.eu/fhir/ig/oah/StructureDefinition/observation-indicators-oah",
+  "name": "ObservationIndicatorsOah",
+  "title": "Observation: OAH Indicators",
+  "status": "draft",
+  "description": "Profile for OneAquaHealth project indicators.",
+  "fhirVersion": "4.0.1",
+  "kind": "resource",
+  "abstract": false,
+  "type": "Observation",
+  "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Observation",
+  "derivation": "constraint",
+  "differential": {
+    "element": [
+      {
+        "id": "Observation.status",
+        "path": "Observation.status",
+        "comment": "The status of the observation.",
+        "patternCode": "final"
+      },
+      {
+        "id": "Observation.code",
+        "path": "Observation.code",
+        "binding": {
+          "strength": "preferred",
+          "valueSet": "http://hl7.eu/fhir/ig/oah/ValueSet/oah-indicators-no-health-oah-vs"
+        }
+      },
+      {
+        "id": "Observation.subject",
+        "path": "Observation.subject",
+        "min": 1,
+        "type": [
+          {
+            "code": "Reference",
+            "targetProfile": [
+              "http://hl7.eu/fhir/ig/oah/StructureDefinition/location-oah"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "Observation.effective[x]",
+        "path": "Observation.effective[x]",
+        "comment": "At least a date should be present unless this observation is a historical report.  For recording imprecise or \"fuzzy\" times (For example, a blood glucose measurement taken \"after breakfast\") use the [Timing] datatype which allow the measurement to be tied to regular life events.",
+        "min": 1
+      },
+      {
+        "id": "Observation.performer",
+        "path": "Observation.performer",
+        "min": 1
+      },
+      {
+        "id": "Observation.value[x]",
+        "path": "Observation.value[x]",
+        "short": "OAH Indicator value",
+        "type": [
+          {
+            "code": "Quantity"
+          },
+          {
+            "code": "CodeableConcept"
+          }
+        ]
+      },
+      {
+        "id": "Observation.specimen",
+        "path": "Observation.specimen",
+        "type": [
+          {
+            "code": "Reference",
+            "targetProfile": [
+              "http://hl7.eu/fhir/ig/oah/StructureDefinition/specimen-oah"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "Observation.component.code",
+        "path": "Observation.component.code",
+        "binding": {
+          "strength": "preferred",
+          "valueSet": "http://hl7.eu/fhir/ig/oah/ValueSet/oah-indicators-no-health-oah-vs"
+        }
+      },
+      {
+        "id": "Observation.component.value[x]",
+        "path": "Observation.component.value[x]",
+        "short": "OAH Indicator component value",
+        "min": 1,
+        "type": [
+          {
+            "code": "Quantity"
+          },
+          {
+            "code": "CodeableConcept"
+          },
+          {
+            "code": "string"
+          }
+        ]
+      }
+    ]
+  }
+}

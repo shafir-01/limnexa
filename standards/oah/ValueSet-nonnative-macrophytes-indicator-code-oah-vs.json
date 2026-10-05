@@ -1,0 +1,51 @@
+{
+  "resourceType": "ValueSet",
+  "status": "draft",
+  "name": "NonNativeMacrophytesIndicatorCodeOahVs",
+  "id": "nonnative-macrophytes-indicator-code-oah-vs",
+  "title": "OAH Macrophytes Indicator Codes (Non-Native)",
+  "description": "This Value Set is used to identify the non-native    indicators adopted by this project.",
+  "url": "http://hl7.eu/fhir/ig/oah/ValueSet/nonnative-macrophytes-indicator-code-oah-vs",
+  "experimental": false,
+  "compose": {
+    "include": [
+      {
+        "system": "http://hl7.eu/fhir/ig/oah/CodeSystem/temporarySystem-oah-eu",
+        "concept": [
+          {
+            "code": "liveworts-non-native",
+            "display": "Liveworts/mosses/lichens Non native"
+          },
+          {
+            "code": "broad-leaved-herbs-non-native",
+            "display": "Emergent broad-leaved herbs non native"
+          },
+          {
+            "code": "floating-leaved-non-native",
+            "display": "Floating-leaved (rooted) Non native"
+          },
+          {
+            "code": "free-floating-non-native",
+            "display": "Free-floating Non native"
+          },
+          {
+            "code": "amphibious-non-native",
+            "display": "Amphibious (occupy the transition between land and water) Non native"
+          },
+          {
+            "code": "submerged-broad-leaved-non-native",
+            "display": "Submerged broad-leaved Non native"
+          },
+          {
+            "code": "submerged-linear-leaved-non-native",
+            "display": "Submerged linear-leaved Non native"
+          },
+          {
+            "code": "filamentous-algae-non-native",
+            "display": "Filamentous algae Non native"
+          }
+        ]
+      }
+    ]
+  }
+}

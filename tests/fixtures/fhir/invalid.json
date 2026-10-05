@@ -1,0 +1,302 @@
+{
+  "resourceType": "Bundle",
+  "id": "4b8d156f47d19ea4da4ba336b59aec63d35155c1",
+  "meta": {
+    "tag": [
+      {
+        "system": "https://limnexa.vercel.app/fhir/CodeSystem/data-class",
+        "code": "synthetic",
+        "display": "Synthetic demonstration data"
+      }
+    ]
+  },
+  "type": "collection",
+  "timestamp": "2026-10-05T12:00:00.000Z",
+  "entry": [
+    {
+      "fullUrl": "https://limnexa.vercel.app/fhir/Location/7923c2ab60506ddf5e55a7cdcbd6e3758102e95b",
+      "resource": {
+        "resourceType": "Location",
+        "id": "7923c2ab60506ddf5e55a7cdcbd6e3758102e95b",
+        "meta": {
+          "tag": [
+            {
+              "system": "https://limnexa.vercel.app/fhir/CodeSystem/data-class",
+              "code": "synthetic",
+              "display": "Synthetic demonstration data"
+            }
+          ],
+          "profile": [
+            "http://hl7.eu/fhir/ig/oah/StructureDefinition/location-oah"
+          ]
+        },
+        "identifier": [
+          {
+            "system": "https://limnexa.vercel.app/fhir/site",
+            "value": "DEMO-SITE-001"
+          }
+        ],
+        "name": "Synthetic monitoring location DEMO-SITE-001",
+        "mode": "instance",
+        "status": "active",
+        "position": {
+          "latitude": 59.3293,
+          "longitude": 18.0686
+        },
+        "text": {
+          "status": "generated",
+          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>SYNTHETIC. Synthetic monitoring location DEMO-SITE-001</p></div>"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://limnexa.vercel.app/fhir/Organization/limnexa",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "limnexa",
+        "meta": {
+          "tag": [
+            {
+              "system": "https://limnexa.vercel.app/fhir/CodeSystem/data-class",
+              "code": "synthetic",
+              "display": "Synthetic demonstration data"
+            }
+          ]
+        },
+        "active": true,
+        "name": "Limnexa environmental evidence intake",
+        "text": {
+          "status": "generated",
+          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>SYNTHETIC. Limnexa environmental evidence intake</p></div>"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://limnexa.vercel.app/fhir/Observation/12d5284bb03cf21ffa52804591d89f5021941655",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "12d5284bb03cf21ffa52804591d89f5021941655",
+        "meta": {
+          "tag": [
+            {
+              "system": "https://limnexa.vercel.app/fhir/CodeSystem/data-class",
+              "code": "synthetic",
+              "display": "Synthetic demonstration data"
+            }
+          ],
+          "profile": [
+            "http://hl7.eu/fhir/ig/oah/StructureDefinition/observation-indicators-oah"
+          ]
+        },
+        "identifier": [
+          {
+            "system": "https://limnexa.vercel.app/fhir/evidence",
+            "value": "synthetic-measurement"
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.eu/fhir/ig/oah/CodeSystem/temporarySystem-oah-eu",
+              "code": "dissolvedO2"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Location/7923c2ab60506ddf5e55a7cdcbd6e3758102e95b"
+        },
+        "effectiveDateTime": "2026-10-05T12:00:00.000Z",
+        "issued": "2026-10-05T12:00:00.000Z",
+        "performer": [
+          {
+            "reference": "Organization/limnexa",
+            "display": "Responsible evidence intake organization"
+          }
+        ],
+        "note": [
+          {
+            "text": "SYNTHETIC. Synthetic instrument dissolved oxygen observation."
+          },
+          {
+            "text": "Capture validation trust-2.0.0; content SHA-256 fb273fc4246582fdf4a81ec5be6d9e4d9ad4fe501cfc4bf888eaada7bac72993. This record does not establish a contamination diagnosis."
+          }
+        ],
+        "valueQuantity": {
+          "value": 3,
+          "unit": "mg/L",
+          "system": "http://unitsofmeasure.org",
+          "code": "mg/L"
+        },
+        "text": {
+          "status": "generated",
+          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>SYNTHETIC. Observation 12d5284bb03cf21ffa52804591d89f5021941655</p></div>"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://limnexa.vercel.app/fhir/Provenance/005d2bc07f06e114dc88dab1a3609697c916957d",
+      "resource": {
+        "resourceType": "Provenance",
+        "id": "005d2bc07f06e114dc88dab1a3609697c916957d",
+        "meta": {
+          "tag": [
+            {
+              "system": "https://limnexa.vercel.app/fhir/CodeSystem/data-class",
+              "code": "synthetic",
+              "display": "Synthetic demonstration data"
+            }
+          ]
+        },
+        "target": [
+          {
+            "reference": "Observation/12d5284bb03cf21ffa52804591d89f5021941655"
+          }
+        ],
+        "recorded": "2026-10-05T12:00:00.000Z",
+        "activity": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/v3-DataOperation",
+              "code": "CREATE"
+            }
+          ],
+          "text": "Immutable capture and deterministic validation"
+        },
+        "agent": [
+          {
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/provenance-participant-type",
+                  "code": "author"
+                }
+              ]
+            },
+            "who": {
+              "identifier": {
+                "system": "https://limnexa.vercel.app/fhir/source-lineage",
+                "value": "c8dd3f4aa37c24ae1e6f510e5217f66eba269372"
+              },
+              "display": "Pseudonymous environmental source"
+            }
+          },
+          {
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/provenance-participant-type",
+                  "code": "assembler"
+                }
+              ]
+            },
+            "who": {
+              "reference": "Organization/limnexa"
+            }
+          }
+        ],
+        "entity": [
+          {
+            "role": "source",
+            "what": {
+              "identifier": {
+                "system": "https://limnexa.vercel.app/fhir/sha256",
+                "value": "fb273fc4246582fdf4a81ec5be6d9e4d9ad4fe501cfc4bf888eaada7bac72993"
+              },
+              "display": "Original evidence synthetic-measurement"
+            }
+          }
+        ],
+        "text": {
+          "status": "generated",
+          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>SYNTHETIC. Provenance 005d2bc07f06e114dc88dab1a3609697c916957d</p></div>"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://limnexa.vercel.app/fhir/Task/787202fa65a0d686184912364b24e17c06eae0f2",
+      "resource": {
+        "resourceType": "Task",
+        "id": "787202fa65a0d686184912364b24e17c06eae0f2",
+        "meta": {
+          "tag": [
+            {
+              "system": "https://limnexa.vercel.app/fhir/CodeSystem/data-class",
+              "code": "synthetic",
+              "display": "Synthetic demonstration data"
+            }
+          ]
+        },
+        "identifier": [
+          {
+            "system": "https://limnexa.vercel.app/fhir/incident",
+            "value": "demo-fixture"
+          }
+        ],
+        "status": "in-progress",
+        "intent": "order",
+        "code": {
+          "text": "Ecological evidence review"
+        },
+        "description": "SYNTHETIC. Rule wastewater-2.0.0; trace 6566fd0ce1860f6ef2c17751d8ed0016f8ef7e610d6bd2f5530982d716346368; state TRIAGED. Investigation is not a diagnosis.",
+        "focus": {
+          "reference": "Location/7923c2ab60506ddf5e55a7cdcbd6e3758102e95b"
+        },
+        "requester": {
+          "reference": "Organization/limnexa"
+        },
+        "authoredOn": "2026-10-05T12:00:00.000Z",
+        "owner": {
+          "display": "ecological-scientist"
+        },
+        "text": {
+          "status": "generated",
+          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>SYNTHETIC. SYNTHETIC. Rule wastewater-2.0.0; trace 6566fd0ce1860f6ef2c17751d8ed0016f8ef7e610d6bd2f5530982d716346368; state TRIAGED. Investigation is not a diagnosis.</p></div>"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://limnexa.vercel.app/fhir/Communication/9eea3d9cd935c5112ba107d8c48c1a6754717565",
+      "resource": {
+        "resourceType": "Communication",
+        "id": "9eea3d9cd935c5112ba107d8c48c1a6754717565",
+        "meta": {
+          "tag": [
+            {
+              "system": "https://limnexa.vercel.app/fhir/CodeSystem/data-class",
+              "code": "synthetic",
+              "display": "Synthetic demonstration data"
+            }
+          ]
+        },
+        "status": "preparation",
+        "category": [
+          {
+            "text": "Environmental responsibility notification"
+          }
+        ],
+        "about": [
+          {
+            "reference": "Task/787202fa65a0d686184912364b24e17c06eae0f2"
+          }
+        ],
+        "sender": {
+          "reference": "Organization/limnexa"
+        },
+        "recipient": [
+          {
+            "display": "ecological-scientist"
+          }
+        ],
+        "payload": [
+          {
+            "contentString": "SYNTHETIC. ECOLOGICAL_REVIEW. Evidence synthetic-measurement. Policy LIMNEXA_DEMO_POLICY_V1@1.0.0. VALIDATED_REPORTS: not met; INDEPENDENT_LINEAGES: not met; STORED_WEATHER_CONTEXT: not met; SAME_REACH: not met"
+          }
+        ],
+        "text": {
+          "status": "generated",
+          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>SYNTHETIC. Communication 9eea3d9cd935c5112ba107d8c48c1a6754717565</p></div>"
+        }
+      }
+    }
+  ]
+}

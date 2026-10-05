@@ -1,0 +1,21 @@
+{
+  "repository": "https://github.com/hl7-eu/oah",
+  "commit": "b907cf0869b59d82d9138b3d147fca66f333d911",
+  "compiledWith": "fsh-sushi@3.20.1",
+  "artifacts": {
+    "CodeSystem-temporarySystem-oah-eu.json": "5fc57a7930adcb09cbf962853281cb278ebdc51dc096d976fc939206056118df",
+    "StructureDefinition-location-oah.json": "33d444cae84a513a33c756df7277aa8e75ef274dea70e89f4b577bef817a1be1",
+    "StructureDefinition-observation-indicators-oah.json": "e230a73859d3fb09985f3c4266f8181c26e2a4891760e7fa84d5e4cd043e8151",
+    "ValueSet-health-indicators-oah-vs.json": "03dfa5d4b1f900b56ac88700e2e9afd5f25d0d6bf5a8f20b21e1ed3f38aac5aa",
+    "ValueSet-macrophytes-indicator-code-oah-vs.json": "44b1357eb070c0496e8b9b70224dcf13753d99195047b5f9cfb901d20d17ae64",
+    "ValueSet-macrophytes-indicator-value-oah-vs.json": "5e233d2d866cd3efa7608b65d0ac5f3c84a15101dff40f2e1ae183de271ea458",
+    "ValueSet-nonnative-macrophytes-indicator-code-oah-vs.json": "db3db1d060deb8a446d0ff81bed7a71154b098d002a1b37dccff572ce6cbff24",
+    "ValueSet-oah-cohort-characteristic-code-vs.json": "777d116dc2ed27b12289ff46a6b5a6f85a0f9be3d7101e5f138fd769dbf31021",
+    "ValueSet-oah-indicators-no-health-oah-vs.json": "4c5d4f10ce34bbd87fc1ac961f4f0486e66bec62ee6c974cbcda0305837bf04c",
+    "ValueSet-observation-type-with-component-oah-vs.json": "817dd0f810b8dd933e1532a1cd9bd93f98e92651e200153ea70abca146343879",
+    "ValueSet-riparian-vegetation-code-oah-vs.json": "a59898143397a2b0792d13b98e0130ff6802e054b1292099b065a6b6eca1c4aa",
+    "ValueSet-riparian-vegetation-value-oah-vs.json": "ee25ba3b191ae149d859ae8cf0f8743920e4d45b58b2688b1ca29cff7fb789fd",
+    "ValueSet-specimen-type-oah-vs.json": "8f7ab9eaa197e9f4deb6a59458e5f54c314ffe92dd520c024696cd8448fef794",
+    "ValueSet-temporarySystem-oah-eu.json": "f1c759a3a43911ff52ec57f37e9dd14655ced37cec401e2ddb3f1cdf2c81a4cb"
+  }
+}
