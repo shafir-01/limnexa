@@ -12,8 +12,11 @@ async function main(){
   const admin=process.env.SPACETIMEDB_TEST_RUNNER_TOKEN||ownerToken(),runId=`test-${Date.now()}`,citizen=await newUser(),other=await newUser();
   await withConnection(admin,[],conn=>conn.reducers.seedScenario({runId}),database);
   const siteId=`DEMO-SITE-001-${runId}`;
+  const health=process.env.SPACETIMEDB_TEST_HEALTH_TOKEN||readFileSync('.env.health.preview.local','utf8').trim().split('=').slice(1).join('=');
+  const beforeHandoff=await withConnection(health,['SELECT * FROM health_incidents','SELECT * FROM science_evidence','SELECT * FROM operations_incidents'],conn=>({health:[...conn.db.healthIncidents.iter()],science:[...conn.db.scienceEvidence.iter()],operations:[...conn.db.operationsIncidents.iter()]}),database);assert.equal(beforeHandoff.science.length+beforeHandoff.operations.length,0);assert(!beforeHandoff.health.some(i=>i.site===siteId));
   const incident=await withConnection(admin,['SELECT * FROM operations_incidents'],conn=>[...conn.db.operationsIncidents.iter()].find(i=>i.site===siteId),database);
   assert(incident);assert.equal(incident.state,'INVESTIGATION_REQUIRED');
+  await assert.rejects(withConnection(admin,[],conn=>conn.reducers.requestHealthReview({incidentId:incident.id,reason:'Premature synthetic handoff must fail'}),database));
   const ecological=await withConnection(admin,['SELECT * FROM operations_incidents'],conn=>[...conn.db.operationsIncidents.iter()].find(i=>i.site===`DEMO-SITE-002-${runId}`),database);assert(ecological);assert.equal(ecological.state,'TRIAGED');assert.equal(JSON.parse(ecological.trace).route,'ecological-scientist');
   await assert.rejects(withConnection(citizen.token,[],conn=>conn.reducers.advanceIncident({incidentId:incident.id,toState:'ACKNOWLEDGED',reason:'Unauthorized',recordId:'',closureRationale:''}),database));
   const input:ReportInput={id:crypto.randomUUID(),siteId,reachId:'DEMO-REACH-001',description:'Synthetic integration citizen report for immutable provenance checks.',category:'other',observedAt:new Date().toISOString(),latitude:59.3293,longitude:18.0686,gpsAccuracyM:12,protocolVersion:'field-v1',mediaHashes:[],measurement:null,supersedesId:'',correctionReason:'',missionId:''};
@@ -27,7 +30,16 @@ async function main(){
   async function advance(toState:string,recordId=''){await withConnection(admin,[],conn=>conn.reducers.advanceIncident({incidentId:incident!.id,toState,reason:`Synthetic integration ${toState}`,recordId,closureRationale:''}),database)}
   await advance('ACKNOWLEDGED');await advance('INVESTIGATING');
   await assert.rejects(advance('CONFIRMED'));
-  const findingId=crypto.randomUUID();await withConnection(admin,[],conn=>conn.reducers.recordFinding({id:findingId,incidentId:incident.id,evidenceIds:incident.evidenceIds,description:'Synthetic professional investigation finding linked to the original evidence.'}),database);await advance('CONFIRMED',findingId);await advance('ACTION_REQUIRED');
+  const findingId=crypto.randomUUID();await withConnection(admin,[],conn=>conn.reducers.recordFinding({id:findingId,incidentId:incident.id,evidenceIds:incident.evidenceIds,description:'Synthetic professional investigation finding linked to the original evidence.'}),database);
+  const firstEvidence=incident.evidenceIds.split(',')[0]!;
+  await withConnection(admin,[],conn=>conn.reducers.recordExpertVerification({id:crypto.randomUUID(),evidenceId:firstEvidence,verdict:'rejected',reason:'Synthetic negative check: rejected evidence cannot support confirmation'}),database);await assert.rejects(advance('CONFIRMED',findingId));
+  await withConnection(admin,[],conn=>conn.reducers.recordExpertVerification({id:crypto.randomUUID(),evidenceId:firstEvidence,verdict:'accepted',reason:'Synthetic reviewed restoration after the negative check'}),database);
+  await advance('CONFIRMED',findingId);
+  await withConnection(admin,[],conn=>conn.reducers.requestHealthReview({incidentId:incident.id,reason:'Synthetic authorized environmental surveillance review; no clinical risk claim'}),database);
+  const handed=await withConnection(health,['SELECT * FROM health_incidents'],conn=>[...conn.db.healthIncidents.iter()].find(i=>i.id===incident.id),database);assert(handed);assert.equal(handed.boundaryVersion,'professional-environmental-handoff-v1');
+  await assert.rejects(withConnection(health,[],conn=>conn.reducers.requestMonitoring({id:crypto.randomUUID(),siteId:ecological.site,reason:'Unauthorized surveillance site request'}),database));
+  await withConnection(health,[],conn=>conn.reducers.requestMonitoring({id:crypto.randomUUID(),siteId,reason:'Synthetic authorized environmental follow-up'}),database);
+  await advance('ACTION_REQUIRED');
   await assert.rejects(advance('ACTIONED'));
   const interventionId=crypto.randomUUID();await withConnection(admin,[],conn=>conn.reducers.recordIntervention({id:interventionId,incidentId:incident.id,description:'Synthetic intervention recorded for integration verification; no real action claimed.'}),database);await advance('ACTIONED',interventionId);await advance('FOLLOW_UP');
   await assert.rejects(advance('CLOSED'));
@@ -40,10 +52,13 @@ async function main(){
   // Exercise delivery duplication using the separately provisioned service identity.
   const env=process.env.SPACETIMEDB_TEST_SERVICE_TOKEN?{SPACETIMEDB_SERVICE_TOKEN:process.env.SPACETIMEDB_TEST_SERVICE_TOKEN}:Object.fromEntries(readFileSync('.env.service.preview.local','utf8').trim().split(/\r?\n/).map(line=>{const i=line.indexOf('=');return [line.slice(0,i),line.slice(i+1)]}));
   const outbox=await withConnection(env.SPACETIMEDB_SERVICE_TOKEN,['SELECT * FROM service_outbox'],conn=>[...conn.db.serviceOutbox.iter()].find(o=>o.aggregateId===incident.id),database);assert(outbox);
+  await withConnection(env.SPACETIMEDB_SERVICE_TOKEN,[],conn=>conn.reducers.reserveDispatch({id:outbox.id,launchId:crypto.randomUUID()}),database);
+  await assert.rejects(withConnection(env.SPACETIMEDB_SERVICE_TOKEN,[],conn=>conn.reducers.reserveDispatch({id:outbox.id,launchId:crypto.randomUUID()}),database));
+  await assert.rejects(withConnection(citizen.token,[],conn=>conn.reducers.reserveDispatch({id:outbox.id,launchId:crypto.randomUUID()}),database));
   await withConnection(env.SPACETIMEDB_SERVICE_TOKEN,[],async conn=>{await conn.reducers.claimOutbox({id:outbox.id});await conn.reducers.deliverTask({outboxId:outbox.id});await conn.reducers.deliverTask({outboxId:outbox.id});await conn.reducers.completeDelivery({id:outbox.id,status:'delivered',receipt:'integration-idempotency-proof',errorCode:''})},database);
   const deliveries=await withConnection(undefined,['SELECT * FROM demo_tasks'],conn=>[...conn.db.demoTasks.iter()].filter(t=>t.idempotencyKey===outbox.idempotencyKey),database);assert.equal(deliveries.length,1);
   mkdirSync('.tools/tests',{recursive:true});writeFileSync('.tools/tests/citizen.json',JSON.stringify(citizen));
-  const results={database,runId,incidentId:incident.id,status:'passed',checks:['unauthorized transition denied','private views scoped','retry idempotent','append-only correction','confirmation requires finding','action requires intervention','closure requires verified follow-up','negative ecological routing','inbox delivery idempotent']};
+  const results={database,runId,incidentId:incident.id,status:'passed',checks:['unauthorized transition denied','private views scoped','retry idempotent','append-only correction','confirmation requires finding','latest expert rejection blocks confirmation','duplicate dispatch reservation denied','action requires intervention','closure requires verified follow-up','negative ecological routing','public-health handoff requires confirmed professional evidence','surveillance role cannot read citizen evidence or investigator notes','surveillance follow-up site scope enforced','inbox delivery idempotent']};
   mkdirSync('docs/validation',{recursive:true});writeFileSync('docs/validation/integration-result.json',JSON.stringify(results,null,2));console.log(JSON.stringify(results));
 }
 main().catch(error=>{console.error(`Integration failed: ${error instanceof Error?error.message:'unknown error'}`);process.exitCode=1});

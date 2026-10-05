@@ -1,6 +1,14 @@
-const CACHE='limnexa-shell-v1';
-self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(['/report','/icon.svg'])));self.skipWaiting()});
-self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))));self.clients.claim()});
+const CACHE='limnexa-shell-v2';
+self.addEventListener('install',event=>{
+  event.waitUntil((async()=>{
+    const cache=await caches.open(CACHE),response=await fetch('/report');
+    if(!response.ok)throw new Error('Report shell unavailable');
+    const html=await response.clone().text();await cache.put('/report',response);
+    const assets=[...new Set([...html.matchAll(/(?:src|href)="(\/_next\/static\/[^"<>]+)"/g)].map(match=>match[1]))];
+    await cache.addAll(['/icon.svg',...assets]);await self.skipWaiting();
+  })());
+});
+self.addEventListener('activate',event=>{event.waitUntil((async()=>{const keys=await caches.keys();await Promise.all(keys.filter(key=>key.startsWith('limnexa-shell-')&&key!==CACHE).map(key=>caches.delete(key)));await self.clients.claim()})())});
 self.addEventListener('fetch',event=>{
   const request=event.request,url=new URL(request.url);
   if(request.method!=='GET'||url.origin!==self.location.origin||url.pathname.startsWith('/api/')||url.pathname.startsWith('/.well-known/'))return;

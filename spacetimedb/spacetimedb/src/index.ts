@@ -44,18 +44,32 @@ const policyAssignment=table({name:'policy_assignment'},{id:t.string().primaryKe
 const sourceRegistration=table({name:'source_registration'},{identity:t.identity().primaryKey(),lineage:t.string(),reason:t.string(),at:t.timestamp()});
 const demoSeeder=table({name:'demo_seeder'},{identity:t.identity().primaryKey(),reason:t.string(),at:t.timestamp()});
 const dispatchLaunch=table({name:'dispatch_launch'},{outboxId:t.u64().primaryKey(),launchId:t.string(),runId:t.string(),at:t.timestamp()});
-const db = schema({ role, observation, incident, incidentEvent, outbox, mission,evidenceRecord,validationRecord,policyRecord,weatherContext,ruleExecution,finding,intervention,verification,delivery,mediaArtifact,monitoringSite,routedTask,assistance,policyAssignment,sourceRegistration,demoSeeder,dispatchLaunch });
+const missionParticipation=table({name:'mission_participation'},{id:t.string().primaryKey(),missionId:t.string(),owner:t.identity(),status:t.string(),evidenceId:t.string(),at:t.timestamp()});
+const incidentAssignment=table({name:'incident_assignment'},{incidentId:t.string().primaryKey(),assignee:t.identity(),actor:t.identity(),reason:t.string(),at:t.timestamp()});
+const deliveryAttempt=table({name:'delivery_attempt'},{id:t.u64().primaryKey().autoInc(),outboxId:t.u64(),attempt:t.u32(),status:t.string(),receipt:t.string(),errorCode:t.string(),at:t.timestamp()});
+const healthHandoff=table({name:'health_handoff'},{incidentId:t.string().primaryKey(),actor:t.identity(),reason:t.string(),boundaryVersion:t.string(),at:t.timestamp()});
+const monitoringRequest=table({name:'monitoring_request'},{id:t.string().primaryKey(),siteId:t.string(),actor:t.identity(),reason:t.string(),at:t.timestamp()});
+const db = schema({ role, observation, incident, incidentEvent, outbox, mission,evidenceRecord,validationRecord,policyRecord,weatherContext,ruleExecution,finding,intervention,verification,delivery,mediaArtifact,monitoringSite,routedTask,assistance,policyAssignment,sourceRegistration,demoSeeder,dispatchLaunch,missionParticipation,incidentAssignment,deliveryAttempt,healthHandoff,monitoringRequest });
 export default db;
 type Context=ReducerCtx<typeof db.schemaType>;
 
 const PublicEvidence = t.row('PublicEvidence', { id:t.string().primaryKey(), site:t.string(), category:t.string(), description:t.string(), observedAt:t.string(), synthetic:t.bool(), contentHash:t.string() });
 const PublicIncident = t.row('PublicIncident', { id:t.string().primaryKey(), site:t.string(), state:t.string(), policyId:t.string(), evidenceIds:t.string(), trace:t.string(), synthetic:t.bool() });
+const HealthIncident=t.row('HealthIncident',{id:t.string().primaryKey(),site:t.string(),state:t.string(),synthetic:t.bool(),reason:t.string(),boundaryVersion:t.string()});
 
 const owner = (ctx: { sender: { toHexString(): string } }) => ctx.sender.toHexString() === OWNER;
 const officer = (ctx: Context | ViewCtx<typeof db.schemaType>) => owner(ctx) || ctx.db.role.identity.find(ctx.sender)?.kind === 'officer';
 function clean(value: string, max: number): string { const v=value.trim(); if (!v || v.length>max) throw new Error('VALIDATION_ERROR'); return v; }
 
 export const myRole = db.view({ name:'my_role', public:true },t.option(role.rowType),ctx=>owner(ctx)?{identity:ctx.sender,kind:'admin'}:ctx.db.role.identity.find(ctx.sender)??undefined);
+export const healthIncidents=db.view({name:'health_incidents',public:true},t.array(HealthIncident),ctx=>owner(ctx)||ctx.db.role.identity.find(ctx.sender)?.kind==='health'?[...ctx.db.healthHandoff.iter()].flatMap(h=>{const i=ctx.db.incident.id.find(h.incidentId);return i?[{id:i.id,site:i.site,state:i.state,synthetic:i.synthetic,reason:h.reason,boundaryVersion:h.boundaryVersion}]:[]}):[]);
+export const availableMissions=db.anonymousView({name:'available_missions',public:true},t.array(mission.rowType),ctx=>[...ctx.db.mission.iter()].filter(m=>m.state==='open').map(m=>m.synthetic?m:{...m,incidentId:'',rationale:'A professional or an assigned local policy requested additional environmental evidence. Follow the local protocol; this request makes no health-risk claim.'}));
+export const myMissionClaims=db.view({name:'my_mission_claims',public:true},t.array(missionParticipation.rowType),ctx=>[...ctx.db.missionParticipation.iter()].filter(p=>p.owner.toHexString()===ctx.sender.toHexString()));
+export const operationsAssignments=db.view({name:'operations_assignments',public:true},t.array(incidentAssignment.rowType),ctx=>officer(ctx)?[...ctx.db.incidentAssignment.iter()]:[]);
+export const operationsOutbox=db.view({name:'operations_outbox',public:true},t.array(outbox.rowType),ctx=>officer(ctx)?[...ctx.db.outbox.iter()].filter(o=>ctx.db.incident.id.find(o.aggregateId)?.policyId!==POLICY):[]);
+export const operationsDeliveryHistory=db.view({name:'operations_delivery_history',public:true},t.array(deliveryAttempt.rowType),ctx=>officer(ctx)?[...ctx.db.deliveryAttempt.iter()]:[]);
+export const myValidation=db.view({name:'my_validation',public:true},t.array(validationRecord.rowType),ctx=>[...ctx.db.validationRecord.iter()].filter(v=>ctx.db.evidenceRecord.id.find(v.evidenceId)?.owner.toHexString()===ctx.sender.toHexString()));
+export const myExpertReviews=db.view({name:'my_expert_reviews',public:true},t.array(verification.rowType),ctx=>[...ctx.db.verification.iter()].filter(v=>ctx.db.evidenceRecord.id.find(v.evidenceId)?.owner.toHexString()===ctx.sender.toHexString()));
 export const myObservations = db.view({ name:'my_observations', public:true },t.array(observation.rowType),ctx=>[...ctx.db.observation.iter()].filter(o=>o.owner.toHexString()===ctx.sender.toHexString()));
 export const reviewObservations = db.view({ name:'review_observations', public:true },t.array(observation.rowType),ctx=>officer(ctx)?[...ctx.db.observation.iter()]:[]);
 export const operationsIncidents = db.view({ name:'operations_incidents', public:true },t.array(incident.rowType),ctx=>officer(ctx)?[...ctx.db.incident.iter()]:[]);
@@ -67,7 +81,7 @@ export const publicDemoIncidents = db.anonymousView({ name:'public_demo_incident
   [...ctx.db.incident.iter()].filter(i=>i.synthetic).map(i=>({id:i.id,site:i.site,state:i.state,policyId:i.policyId,evidenceIds:i.evidenceIds,trace:i.trace,synthetic:i.synthetic})));
 
 export const grantRole = db.reducer({ identity:t.identity(), kind:t.string() },(ctx,{identity,kind})=>{
-  if(!owner(ctx)||!['officer','scientist','service','citizen'].includes(kind)) throw new Error('AUTHORIZATION_DENIED');
+  if(!owner(ctx)||!['officer','scientist','health','service','citizen'].includes(kind)) throw new Error('AUTHORIZATION_DENIED');
   const existing=ctx.db.role.identity.find(identity);
   if(existing) ctx.db.role.identity.update({...existing,kind}); else ctx.db.role.insert({identity,kind});
 });
@@ -97,12 +111,14 @@ export const serviceIncidents=db.view({name:'service_incidents',public:true},t.a
 export const serviceEvidence=db.view({name:'service_evidence',public:true},t.array(evidenceRecord.rowType),ctx=>ctx.db.role.identity.find(ctx.sender)?.kind==='service'?[...ctx.db.evidenceRecord.iter()]:[]);
 export const serviceSites=db.view({name:'service_sites',public:true},t.array(monitoringSite.rowType),ctx=>ctx.db.role.identity.find(ctx.sender)?.kind==='service'?[...ctx.db.monitoringSite.iter()]:[]);
 export const serviceWeatherPolicies=db.view({name:'service_weather_policies',public:true},t.array(policyRecord.rowType),ctx=>ctx.db.role.identity.find(ctx.sender)?.kind==='service'?[...ctx.db.policyRecord.iter()]:[]);
+export const serviceRuleExecutions=db.view({name:'service_rule_executions',public:true},t.array(ruleExecution.rowType),ctx=>ctx.db.role.identity.find(ctx.sender)?.kind==='service'?[...ctx.db.ruleExecution.iter()]:[]);
+export const serviceWeatherContext=db.view({name:'service_weather_context',public:true},t.array(weatherContext.rowType),ctx=>ctx.db.role.identity.find(ctx.sender)?.kind==='service'?[...ctx.db.weatherContext.iter()]:[]);
 export const servicePolicyAssignments=db.view({name:'service_policy_assignments',public:true},t.array(policyAssignment.rowType),ctx=>ctx.db.role.identity.find(ctx.sender)?.kind==='service'?[...ctx.db.policyAssignment.iter()]:[]);
 export const serviceDispatchLaunches=db.view({name:'service_dispatch_launches',public:true},t.array(dispatchLaunch.rowType),ctx=>ctx.db.role.identity.find(ctx.sender)?.kind==='service'?[...ctx.db.dispatchLaunch.iter()]:[]);
 export const demoTasks=db.anonymousView({name:'demo_tasks',public:true},t.array(routedTask.rowType),ctx=>[...ctx.db.routedTask.iter()].filter(task=>task.synthetic));
 export const myTasks=db.view({name:'my_tasks',public:true},t.array(routedTask.rowType),ctx=>{
   const kind=ctx.db.role.identity.find(ctx.sender)?.kind;
-  return [...ctx.db.routedTask.iter()].filter(task=>owner(ctx)||kind==='officer'&&task.route==='environmental-officer'||kind==='scientist'&&task.route==='ecological-scientist');
+  return [...ctx.db.routedTask.iter()].filter(task=>owner(ctx)||kind==='officer'&&task.route==='environmental-officer'||kind==='scientist'&&task.route==='ecological-scientist'||kind==='health'&&task.route==='public-health-review');
 });
 
 function ensurePolicy(ctx:Context){const id=`${DEMO_POLICY.id}@${DEMO_POLICY.version}`;if(!ctx.db.policyRecord.id.find(id))ctx.db.policyRecord.insert({id,payload:JSON.stringify(DEMO_POLICY),synthetic:true});}
@@ -137,10 +153,11 @@ function persistEvidence(ctx:Context,untrusted:unknown,synthetic:boolean,lineage
   const v=validateEvidence(e,ctx.timestamp.toISOString(),qualityPolicy);
   ctx.db.evidenceRecord.insert({id:e.id,owner:ctx.sender,siteId:e.siteId,synthetic,payload:JSON.stringify(e),contentHash:e.contentHash});
   ctx.db.validationRecord.insert({id:`validation-${e.id}`,evidenceId:e.id,eligible:v.eligible,payload:JSON.stringify(v),at:ctx.timestamp});
+  if(e.missionId){const id=`${e.missionId}:${ctx.sender.toHexString()}`,prior=ctx.db.missionParticipation.id.find(id),row={id,missionId:e.missionId,owner:ctx.sender,status:'submitted',evidenceId:e.id,at:ctx.timestamp};if(prior)ctx.db.missionParticipation.id.update(row);else ctx.db.missionParticipation.insert(row);}
   return e;
 }
 function runPolicy(ctx:Context,siteId:string,policy:Policy):Trace{
-  const evidence=[...ctx.db.evidenceRecord.iter()].map(r=>JSON.parse(r.payload) as Evidence);
+  const evidence=latestEvidence([...ctx.db.evidenceRecord.iter()].map(r=>JSON.parse(r.payload) as Evidence)).filter(e=>latestReview(ctx,e.id)?.verdict!=='rejected');
   const weather=[...ctx.db.weatherContext.iter()].map(w=>JSON.parse(w.payload) as Weather);
   const trace=evaluate(evidence,weather,policy,siteId,ctx.timestamp.toISOString());
   if(!ctx.db.ruleExecution.id.find(trace.id))ctx.db.ruleExecution.insert({id:trace.id,siteId,synthetic:policy.synthetic,route:trace.route,payload:JSON.stringify(trace),at:ctx.timestamp});
@@ -153,6 +170,7 @@ function runPolicy(ctx:Context,siteId:string,policy:Policy):Trace{
   ctx.db.outbox.insert({id:0n,kind:trace.route==='environmental-officer'?'environmental-task':'ecological-task',aggregateId:id,idempotencyKey:`${id}:route`,payload:JSON.stringify({incidentId:id,route:trace.route,traceId:trace.id,synthetic:policy.synthetic}),status:'pending',at:ctx.timestamp});
   return trace;
 }
+function latestReview(ctx:Context,evidenceId:string){return [...ctx.db.verification.iter()].filter(v=>v.evidenceId===evidenceId).sort((a,b)=>a.at.microsSinceUnixEpoch>b.at.microsSinceUnixEpoch?-1:1)[0]}
 function queueWeather(ctx:Context,siteId:string,policy:Policy){
   if(policy.synthetic||policy.windowMinutes<60||policy.windowMinutes%60!==0)return;
   const hour=ctx.timestamp.microsSinceUnixEpoch/3600000000n;
@@ -183,13 +201,16 @@ export const appendRevision=db.reducer({payload:t.string()},(ctx,{payload})=>{
 });
 export const recordExpertVerification=db.reducer({id:t.string(),evidenceId:t.string(),verdict:t.string(),reason:t.string()},(ctx,{id,evidenceId,verdict,reason})=>{
   if(!owner(ctx)&&!['officer','scientist'].includes(ctx.db.role.identity.find(ctx.sender)?.kind??''))throw new Error('AUTHORIZATION_DENIED');
-  if(!ctx.db.evidenceRecord.id.find(evidenceId)||!['accepted','rejected'].includes(verdict))throw new Error('VALIDATION_ERROR');
+  const record=ctx.db.evidenceRecord.id.find(evidenceId);if(!record||!['accepted','rejected'].includes(verdict))throw new Error('VALIDATION_ERROR');
+  if(!record.synthetic&&record.owner.toHexString()===ctx.sender.toHexString())throw new Error('INDEPENDENT_REVIEW_REQUIRED');
   clean(reason,1000);ctx.db.verification.insert({id,evidenceId,verdict,reason,actor:ctx.sender,at:ctx.timestamp});
+  for(const participation of ctx.db.missionParticipation.iter())if(participation.evidenceId===evidenceId)ctx.db.missionParticipation.id.update({...participation,status:verdict==='accepted'?'verified':'requires-correction',at:ctx.timestamp});
 });
 export const recordFinding=db.reducer({id:t.string(),incidentId:t.string(),evidenceIds:t.string(),description:t.string()},(ctx,input)=>{
   if(!officer(ctx))throw new Error('AUTHORIZATION_DENIED');
   const i=ctx.db.incident.id.find(input.incidentId);
-  if(!i||i.state!=='INVESTIGATING'||!input.evidenceIds.split(',').every(id=>ctx.db.evidenceRecord.id.find(id)?.siteId===i.site&&ctx.db.validationRecord.id.find(`validation-${id}`)?.eligible))throw new Error('EVIDENCE_INELIGIBLE');
+  const currentIds=new Set(latestEvidence([...ctx.db.evidenceRecord.iter()].map(r=>JSON.parse(r.payload) as Evidence)).map(e=>e.id));
+  if(!i||i.state!=='INVESTIGATING'||!input.evidenceIds.split(',').every(id=>currentIds.has(id)&&latestReview(ctx,id)?.verdict!=='rejected'&&ctx.db.evidenceRecord.id.find(id)?.siteId===i.site&&ctx.db.validationRecord.id.find(`validation-${id}`)?.eligible))throw new Error('EVIDENCE_INELIGIBLE');
   clean(input.description,2000);ctx.db.finding.insert({...input,actor:ctx.sender,at:ctx.timestamp});
 });
 export const recordIntervention=db.reducer({id:t.string(),incidentId:t.string(),description:t.string()},(ctx,input)=>{
@@ -201,18 +222,20 @@ export const advanceIncident=db.reducer({incidentId:t.string(),toState:t.string(
   if(!officer(ctx))throw new Error('AUTHORIZATION_DENIED');
   const current=ctx.db.incident.id.find(incidentId);if(!current)throw new Error('CONFLICT');
   clean(reason,1000);if(closureRationale.length>1000)throw new Error('VALIDATION_ERROR');
-  const f=ctx.db.finding.id.find(recordId),action=ctx.db.intervention.id.find(recordId);
+  const storedFinding=ctx.db.finding.id.find(recordId),action=ctx.db.intervention.id.find(recordId);
   const linkedMission=ctx.db.mission.id.find(`mission-${incidentId}`);
   const actions=[...ctx.db.intervention.iter()].filter(a=>a.incidentId===incidentId);
   const latestAction=actions.reduce((latest,a)=>a.at.microsSinceUnixEpoch>latest?a.at.microsSinceUnixEpoch:latest,0n);
   const allEvidence=[...ctx.db.evidenceRecord.iter()].map(r=>JSON.parse(r.payload) as Evidence);
   const superseded=new Set(allEvidence.map(e=>e.supersedesId));
+  const f=storedFinding?.evidenceIds.split(',').every(id=>!superseded.has(id)&&latestReview(ctx,id)?.verdict!=='rejected')?storedFinding:undefined;
   const followUp=allEvidence.filter(e=>{
     const reviews=[...ctx.db.verification.iter()].filter(v=>v.evidenceId===e.id).sort((a,b)=>a.at.microsSinceUnixEpoch>b.at.microsSinceUnixEpoch?-1:1);
     return !superseded.has(e.id)&&e.synthetic===current.synthetic&&e.missionId===linkedMission?.id&&e.siteId===current.site&&Date.parse(e.observedAt)*1000>Number(latestAction)&&ctx.db.validationRecord.id.find(`validation-${e.id}`)?.eligible&&reviews[0]?.verdict==='accepted';
   });
   assertTransition(current.state as IncidentState,toState as IncidentState,{role:owner(ctx)?'admin':'officer',reason,findingId:f?.incidentId===incidentId?f.id:undefined,supportingEvidenceIds:f?.evidenceIds.split(',').filter(Boolean),interventionId:action?.incidentId===incidentId?action.id:undefined,followUpEvidenceIds:followUp.map(e=>e.id),authorizedClosureRationale:closureRationale});
   ctx.db.incident.id.update({...current,state:toState});
+  if(toState==='ACKNOWLEDGED'&&!ctx.db.incidentAssignment.incidentId.find(incidentId))ctx.db.incidentAssignment.insert({incidentId,assignee:ctx.sender,actor:ctx.sender,reason,at:ctx.timestamp});
   ctx.db.incidentEvent.insert({id:0n,incidentId,fromState:current.state,toState,actor:ctx.sender,reason,at:ctx.timestamp});
   ctx.db.outbox.insert({id:0n,kind:'incident-status',aggregateId:incidentId,idempotencyKey:`${incidentId}:${toState}:${ctx.timestamp.microsSinceUnixEpoch}`,payload:JSON.stringify({incidentId,toState,recordId,reason}),status:'pending',at:ctx.timestamp});
   if(toState==='FOLLOW_UP'&&!linkedMission)ctx.db.mission.insert({id:`mission-${incidentId}`,incidentId,site:current.site,rationale:'Collect independent post-action evidence. An expert must verify it before outcome assessment.',state:'open',synthetic:current.synthetic});
@@ -259,6 +282,7 @@ export const claimOutbox=db.reducer({id:t.u64()},(ctx,{id})=>{
   if(prior?.status==='processing'&&ctx.timestamp.microsSinceUnixEpoch-prior.at.microsSinceUnixEpoch<300000000n)throw new Error('DELIVERY_LEASE_ACTIVE');
   const row={idempotencyKey:message.idempotencyKey,outboxId:id,status:'processing',attempts:(prior?.attempts??0)+1,receipt:prior?.receipt??'',lastError:'',at:ctx.timestamp};
   if(prior)ctx.db.delivery.idempotencyKey.update(row);else ctx.db.delivery.insert(row);
+  ctx.db.deliveryAttempt.insert({id:0n,outboxId:id,attempt:row.attempts,status:'processing',receipt:'',errorCode:'',at:ctx.timestamp});
   ctx.db.outbox.id.update({...message,status:'processing'});
 });
 // Reserve before starting a paid durable run; interrupted launches expire.
@@ -291,6 +315,7 @@ export const completeDelivery=db.reducer({id:t.u64(),status:t.string(),receipt:t
   if(prior.status==='delivered')return;
   if(status==='retry'&&prior.attempts>=8){status='dead';errorCode='DELIVERY_RETRY_EXHAUSTED';}
   ctx.db.delivery.idempotencyKey.update({...prior,status,receipt:receipt.slice(0,500),lastError:errorCode.slice(0,100),at:ctx.timestamp});
+  ctx.db.deliveryAttempt.insert({id:0n,outboxId:id,attempt:prior.attempts,status,receipt:receipt.slice(0,500),errorCode:errorCode.slice(0,100),at:ctx.timestamp});
   ctx.db.outbox.id.update({...message,status});
 });
 export const requestFhirExport=db.reducer({incidentId:t.string()},(ctx,{incidentId})=>{
@@ -315,9 +340,43 @@ export const deliverTask=db.reducer({outboxId:t.u64()},(ctx,{outboxId})=>{
   const i=ctx.db.incident.id.find(message.aggregateId);if(!i)throw new Error('CONFLICT');
   if(ctx.db.routedTask.idempotencyKey.find(message.idempotencyKey))return;
   const trace=JSON.parse(i.trace) as Trace;
-  const route=trace.route;
-  if(!['ecological-scientist','environmental-officer'].includes(route))throw new Error('RESPONSIBILITY_NOT_CONFIGURED');
+  const route=message.kind==='public-health-review'?'public-health-review':trace.route;
+  if(!['ecological-scientist','environmental-officer','public-health-review'].includes(route))throw new Error('RESPONSIBILITY_NOT_CONFIGURED');
   ctx.db.routedTask.insert({idempotencyKey:message.idempotencyKey,incidentId:i.id,route,status:'available',synthetic:i.synthetic,at:ctx.timestamp});
+});
+export const acknowledgeTask=db.reducer({idempotencyKey:t.string(),reason:t.string()},(ctx,{idempotencyKey,reason})=>{
+  const task=ctx.db.routedTask.idempotencyKey.find(idempotencyKey);if(!task)throw new Error('CONFLICT');
+  const kind=ctx.db.role.identity.find(ctx.sender)?.kind;
+  if(!owner(ctx)&&!(task.route==='environmental-officer'&&kind==='officer')&&!(task.route==='ecological-scientist'&&kind==='scientist')&&!(task.route==='public-health-review'&&kind==='health'))throw new Error('AUTHORIZATION_DENIED');
+  clean(reason,1000);if(task.status==='acknowledged')return;
+  ctx.db.routedTask.idempotencyKey.update({...task,status:'acknowledged',at:ctx.timestamp});
+  const i=ctx.db.incident.id.find(task.incidentId);if(i)ctx.db.incidentEvent.insert({id:0n,incidentId:i.id,fromState:i.state,toState:i.state,actor:ctx.sender,reason:`Responsibility inbox acknowledged: ${reason}`,at:ctx.timestamp});
+});
+export const claimMission=db.reducer({missionId:t.string()},(ctx,{missionId})=>{
+  const mission=ctx.db.mission.id.find(missionId);if(!mission||mission.state!=='open')throw new Error('MISSION_NOT_OPEN');
+  const id=`${missionId}:${ctx.sender.toHexString()}`;if(ctx.db.missionParticipation.id.find(id))return;
+  ctx.db.missionParticipation.insert({id,missionId,owner:ctx.sender,status:'claimed',evidenceId:'',at:ctx.timestamp});
+});
+export const requestHealthReview=db.reducer({incidentId:t.string(),reason:t.string()},(ctx,{incidentId,reason})=>{
+  if(!officer(ctx))throw new Error('AUTHORIZATION_DENIED');clean(reason,1000);
+  const i=ctx.db.incident.id.find(incidentId);
+  if(!i||!['CONFIRMED','ACTION_REQUIRED','ACTIONED','FOLLOW_UP'].includes(i.state)||(JSON.parse(i.trace) as Trace).route!=='environmental-officer')throw new Error('HEALTH_ROUTING_BOUNDARY_NOT_MET');
+  const eligibleFinding=[...ctx.db.finding.iter()].some(f=>f.incidentId===i.id&&f.evidenceIds.split(',').every(id=>latestReview(ctx,id)?.verdict!=='rejected'));
+  if(!eligibleFinding)throw new Error('HEALTH_ROUTING_BOUNDARY_NOT_MET');
+  if(ctx.db.healthHandoff.incidentId.find(incidentId))return;
+  const boundaryVersion='professional-environmental-handoff-v1';
+  ctx.db.healthHandoff.insert({incidentId,actor:ctx.sender,reason,boundaryVersion,at:ctx.timestamp});
+  ctx.db.incidentEvent.insert({id:0n,incidentId,fromState:i.state,toState:i.state,actor:ctx.sender,reason:`Authorized environmental surveillance handoff (${boundaryVersion}): ${reason}. No exposure, infection, pathogen or health-risk determination.`,at:ctx.timestamp});
+  ctx.db.outbox.insert({id:0n,kind:'public-health-review',aggregateId:incidentId,idempotencyKey:`${incidentId}:public-health-review`,payload:JSON.stringify({incidentId,route:'public-health-review',boundaryVersion,synthetic:i.synthetic}),status:'pending',at:ctx.timestamp});
+});
+export const requestMonitoring=db.reducer({id:t.string(),siteId:t.string(),reason:t.string()},(ctx,{id,siteId,reason})=>{
+  const kind=ctx.db.role.identity.find(ctx.sender)?.kind;
+  const healthAccess=kind==='health'&&[...ctx.db.healthHandoff.iter()].some(h=>ctx.db.incident.id.find(h.incidentId)?.site===siteId);
+  if(!owner(ctx)&&!['officer','scientist'].includes(kind??'')&&!healthAccess)throw new Error('AUTHORIZATION_DENIED');
+  clean(id,100);clean(reason,1000);const site=ctx.db.monitoringSite.id.find(siteId);if(!site)throw new Error('SITE_RESOLUTION_REQUIRED');
+  const prior=ctx.db.monitoringRequest.id.find(id);if(prior){if(prior.actor.toHexString()!==ctx.sender.toHexString()||prior.siteId!==siteId||prior.reason!==reason)throw new Error('CONFLICT');return;}
+  ctx.db.monitoringRequest.insert({id,siteId,actor:ctx.sender,reason,at:ctx.timestamp});
+  ctx.db.mission.insert({id,incidentId:'',site:siteId,rationale:`Professional follow-up request: ${reason}`,state:'open',synthetic:site.synthetic});
 });
 export const registerMedia=db.reducer({id:t.string(),ownerIdentity:t.identity(),pathname:t.string(),contentHash:t.string(),mimeType:t.string(),siteId:t.string()},(ctx,input)=>{
   if(ctx.db.role.identity.find(ctx.sender)?.kind!=='service')throw new Error('AUTHORIZATION_DENIED');
@@ -360,7 +419,7 @@ export const registerSource=db.reducer({identity:t.identity(),lineage:t.string()
 });
 export const refreshMonitoring=db.reducer(ctx=>{
   if(!officer(ctx)&&ctx.db.role.identity.find(ctx.sender)?.kind!=='service')throw new Error('AUTHORIZATION_DENIED');
-  const allEvidence=latestEvidence([...ctx.db.evidenceRecord.iter()].map(r=>JSON.parse(r.payload) as Evidence));
+  const allEvidence=latestEvidence([...ctx.db.evidenceRecord.iter()].map(r=>JSON.parse(r.payload) as Evidence)).filter(e=>latestReview(ctx,e.id)?.verdict!=='rejected');
   for(const site of ctx.db.monitoringSite.iter()){
     const assigned=[...ctx.db.policyAssignment.iter()].find(a=>a.siteId===site.id);
     const record=assigned?ctx.db.policyRecord.id.find(assigned.policyKey):null;

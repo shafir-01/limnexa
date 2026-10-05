@@ -6,8 +6,10 @@
 import { type Infer as __Infer } from "spacetimedb";
 
 // Import all reducer arg schemas
+import AcknowledgeTaskReducer from "../acknowledge_task_reducer";
 import AdvanceIncidentReducer from "../advance_incident_reducer";
 import AppendRevisionReducer from "../append_revision_reducer";
+import ClaimMissionReducer from "../claim_mission_reducer";
 import ClaimOutboxReducer from "../claim_outbox_reducer";
 import CompleteAssistanceReducer from "../complete_assistance_reducer";
 import CompleteDeliveryReducer from "../complete_delivery_reducer";
@@ -26,6 +28,8 @@ import RefreshMonitoringReducer from "../refresh_monitoring_reducer";
 import RegisterMediaReducer from "../register_media_reducer";
 import RegisterSourceReducer from "../register_source_reducer";
 import RequestFhirExportReducer from "../request_fhir_export_reducer";
+import RequestHealthReviewReducer from "../request_health_review_reducer";
+import RequestMonitoringReducer from "../request_monitoring_reducer";
 import ReserveAssistanceReducer from "../reserve_assistance_reducer";
 import ReserveDispatchReducer from "../reserve_dispatch_reducer";
 import RetryDeadDeliveryReducer from "../retry_dead_delivery_reducer";
@@ -36,8 +40,10 @@ import StoreWeatherReducer from "../store_weather_reducer";
 import SubmitObservationReducer from "../submit_observation_reducer";
 import TransitionIncidentReducer from "../transition_incident_reducer";
 
+export type AcknowledgeTaskParams = __Infer<typeof AcknowledgeTaskReducer>;
 export type AdvanceIncidentParams = __Infer<typeof AdvanceIncidentReducer>;
 export type AppendRevisionParams = __Infer<typeof AppendRevisionReducer>;
+export type ClaimMissionParams = __Infer<typeof ClaimMissionReducer>;
 export type ClaimOutboxParams = __Infer<typeof ClaimOutboxReducer>;
 export type CompleteAssistanceParams = __Infer<typeof CompleteAssistanceReducer>;
 export type CompleteDeliveryParams = __Infer<typeof CompleteDeliveryReducer>;
@@ -56,6 +62,8 @@ export type RefreshMonitoringParams = __Infer<typeof RefreshMonitoringReducer>;
 export type RegisterMediaParams = __Infer<typeof RegisterMediaReducer>;
 export type RegisterSourceParams = __Infer<typeof RegisterSourceReducer>;
 export type RequestFhirExportParams = __Infer<typeof RequestFhirExportReducer>;
+export type RequestHealthReviewParams = __Infer<typeof RequestHealthReviewReducer>;
+export type RequestMonitoringParams = __Infer<typeof RequestMonitoringReducer>;
 export type ReserveAssistanceParams = __Infer<typeof ReserveAssistanceReducer>;
 export type ReserveDispatchParams = __Infer<typeof ReserveDispatchReducer>;
 export type RetryDeadDeliveryParams = __Infer<typeof RetryDeadDeliveryReducer>;

@@ -1,5 +1,7 @@
-# Dependency baseline
+# Reproducible dependency baseline
 
-Inspected 2026-10-05. Local Node: 24.14.1. `pnpm`, `spacetime`, and `vercel` CLIs were absent at initial inspection. Next.js installation docs require Node 20.9+ and document Next.js 16 App Router setup. SpacetimeDB TypeScript quickstart documents `spacetimedb/server` tables and reducers, and its chat tutorial states tables are private by default. The OneAquaHealth guide lists `hl7.eu.fhir.oah#0.1.0-ci-build`, FHIR R4, draft CI build dated 2026-06-11. A CI build is not a stable conformance target; no OAH conformance claim is made here.
+Inspected and installed 5 October 2026. Node 24.14.1 / npm 11.11, Next 16.3.8, React 19, TypeScript 5.9, Tailwind 4.3, SpacetimeDB CLI/SDK 2.10.2, Workflow 5.0.1, AI SDK 7.0.127 / Gateway 4.0.103, Vercel CLI 62.2, Playwright 1.63, Gitleaks 8.30.0, SUSHI 3.20.1, Java 21 and official HL7 validator 6.10.4. Exact transitive versions are locked in package-lock.json.
 
-Sources: https://nextjs.org/docs/app/getting-started/installation ; https://spacetimedb.com/docs/quickstarts/typescript/ ; https://spacetimedb.com/docs/tutorials/chat-app/ ; https://build.fhir.org/ig/hl7-eu/oah/downloads.html
+Portable Windows tooling lives only in ignored `.tools`; SpacetimeDB CLI is installed under LOCALAPPDATA. CI sets up Node and Java, installs from the lockfile, and checksum-verifies downloaded Gitleaks and the official FHIR validator. The validator digest and official OAH source/artifact hashes are committed. Production dependency audit is a required CI gate; compatible patch overrides address Workflow's devalue/nanoid advisories. Development CLI advisories are tracked separately in ADR_001_TOOLCHAIN.md.
+
+The OAH target is the exact official draft source snapshot and compiled environmental profiles described in FHIR_TARGET.md, not an unpinned CI URL or a claimed normative release. Local generated bindings match the published TypeScript module and are generated through the CLI.

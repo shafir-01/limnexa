@@ -3,6 +3,7 @@ import {createHash} from 'node:crypto';
 import {Identity} from 'spacetimedb';
 import {z} from 'zod';
 import {serviceToken,withConnection} from '../spacetime/connect';
+import {hasEmbeddedMetadata} from './metadata';
 export const mediaMetadata=z.object({id:z.string().uuid(),siteId:z.string().min(3).max(120),contentHash:z.string().regex(/^[a-f0-9]{64}$/),mimeType:z.enum(['image/jpeg','image/png','image/webp'])}).strict();
 export async function verifyAndRegister(pathname:string,owner:string,untrusted:unknown){
   const metadata=mediaMetadata.parse(untrusted);
@@ -16,6 +17,7 @@ export async function verifyAndRegister(pathname:string,owner:string,untrusted:u
   const b=new Uint8Array(bytes);
   const signature=metadata.mimeType==='image/jpeg'?b[0]===255&&b[1]===216&&b[2]===255:metadata.mimeType==='image/png'?b.slice(0,8).join(',')==='137,80,78,71,13,10,26,10':new TextDecoder().decode(b.slice(0,4))==='RIFF'&&new TextDecoder().decode(b.slice(8,12))==='WEBP';
   if(!signature)throw new Error('MEDIA_TYPE_MISMATCH');
+  if(hasEmbeddedMetadata(b,metadata.mimeType))throw new Error('MEDIA_METADATA_MUST_BE_REMOVED');
   await withConnection(serviceToken(),[],conn=>conn.reducers.registerMedia({...metadata,ownerIdentity:Identity.fromString(owner),pathname}));
   return {id:metadata.id,contentHash:actual};
 }

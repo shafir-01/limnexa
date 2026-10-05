@@ -118,7 +118,7 @@
             "text": "SYNTHETIC. Synthetic instrument dissolved oxygen observation."
           },
           {
-            "text": "Capture validation trust-2.0.0; content SHA-256 fb273fc4246582fdf4a81ec5be6d9e4d9ad4fe501cfc4bf888eaada7bac72993. This record does not establish a contamination diagnosis."
+            "text": "Capture validation trust-2.0.0; content SHA-256 11d72201d83a2c08f66cec3c1c000985ed4b0f90802de50c213c892820d52987. This record does not establish a contamination diagnosis."
           }
         ],
         "valueQuantity": {
@@ -200,7 +200,7 @@
             "what": {
               "identifier": {
                 "system": "https://limnexa.vercel.app/fhir/sha256",
-                "value": "fb273fc4246582fdf4a81ec5be6d9e4d9ad4fe501cfc4bf888eaada7bac72993"
+                "value": "11d72201d83a2c08f66cec3c1c000985ed4b0f90802de50c213c892820d52987"
               },
               "display": "Original evidence synthetic-measurement"
             }

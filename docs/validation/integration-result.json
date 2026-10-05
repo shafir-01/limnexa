@@ -1,7 +1,7 @@
 {
   "database": "limnexa-jltls-preview",
-  "runId": "test-1791208817445",
-  "incidentId": "inc-025be4515c6ebfb1a355d0b8",
+  "runId": "test-1791213004306",
+  "incidentId": "inc-8525850f37d34f22adcda5e4",
   "status": "passed",
   "checks": [
     "unauthorized transition denied",
@@ -9,9 +9,14 @@
     "retry idempotent",
     "append-only correction",
     "confirmation requires finding",
+    "latest expert rejection blocks confirmation",
+    "duplicate dispatch reservation denied",
     "action requires intervention",
     "closure requires verified follow-up",
     "negative ecological routing",
+    "public-health handoff requires confirmed professional evidence",
+    "surveillance role cannot read citizen evidence or investigator notes",
+    "surveillance follow-up site scope enforced",
     "inbox delivery idempotent"
   ]
 }

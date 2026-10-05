@@ -46,9 +46,9 @@ async function acknowledge(id:string,receipt:string){
   'use step';
   await withConnection(serviceToken(),['SELECT * FROM service_outbox'],conn=>conn.reducers.completeDelivery({id:BigInt(id),status:'delivered',receipt,errorCode:''}));
 }
-async function recordFailure(id:string){
+async function recordFailure(id:string,errorCode:string){
   'use step';
-  await withConnection(serviceToken(),['SELECT * FROM service_outbox'],conn=>conn.reducers.completeDelivery({id:BigInt(id),status:'retry',receipt:'',errorCode:'EXTERNAL_RETRYABLE_FAILURE'}));
+  await withConnection(serviceToken(),['SELECT * FROM service_outbox'],conn=>conn.reducers.completeDelivery({id:BigInt(id),status:'retry',receipt:'',errorCode}));
 }
 export async function dispatchOutbox(id:string){
   'use workflow';
@@ -58,8 +58,9 @@ export async function dispatchOutbox(id:string){
     await acknowledge(id,receipt);
     if(message.messageKind==='environmental-task'){await sleep('10m');await timeoutCheck(message.aggregateId);}
     return {status:'delivered',receipt};
-  }catch{
-    await recordFailure(id);
+  }catch(error){
+    const errorCode=error instanceof Error&&error.message.includes('FHIR_DESTINATION_NOT_CONFIGURED')?'FHIR_DESTINATION_NOT_CONFIGURED':'EXTERNAL_RETRYABLE_FAILURE';
+    await recordFailure(id,errorCode);
     return {status:'retry'};
   }
 }

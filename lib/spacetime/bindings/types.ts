@@ -22,6 +22,9 @@ export const Assistance = __t.object("Assistance", {
 });
 export type Assistance = __Infer<typeof Assistance>;
 
+export const AvailableMissions = __t.object("AvailableMissions", {});
+export type AvailableMissions = __Infer<typeof AvailableMissions>;
+
 export const Delivery = __t.object("Delivery", {
   idempotencyKey: __t.string(),
   outboxId: __t.u64(),
@@ -32,6 +35,17 @@ export const Delivery = __t.object("Delivery", {
   at: __t.timestamp(),
 });
 export type Delivery = __Infer<typeof Delivery>;
+
+export const DeliveryAttempt = __t.object("DeliveryAttempt", {
+  id: __t.u64(),
+  outboxId: __t.u64(),
+  attempt: __t.u32(),
+  status: __t.string(),
+  receipt: __t.string(),
+  errorCode: __t.string(),
+  at: __t.timestamp(),
+});
+export type DeliveryAttempt = __Infer<typeof DeliveryAttempt>;
 
 export const DemoDeliveries = __t.object("DemoDeliveries", {});
 export type DemoDeliveries = __Infer<typeof DemoDeliveries>;
@@ -108,6 +122,28 @@ export const Finding = __t.object("Finding", {
 });
 export type Finding = __Infer<typeof Finding>;
 
+export const HealthHandoff = __t.object("HealthHandoff", {
+  incidentId: __t.string(),
+  actor: __t.identity(),
+  reason: __t.string(),
+  boundaryVersion: __t.string(),
+  at: __t.timestamp(),
+});
+export type HealthHandoff = __Infer<typeof HealthHandoff>;
+
+export const HealthIncident = __t.object("HealthIncident", {
+  id: __t.string(),
+  site: __t.string(),
+  state: __t.string(),
+  synthetic: __t.bool(),
+  reason: __t.string(),
+  boundaryVersion: __t.string(),
+});
+export type HealthIncident = __Infer<typeof HealthIncident>;
+
+export const HealthIncidents = __t.object("HealthIncidents", {});
+export type HealthIncidents = __Infer<typeof HealthIncidents>;
+
 export const Incident = __t.object("Incident", {
   id: __t.string(),
   site: __t.string(),
@@ -119,6 +155,15 @@ export const Incident = __t.object("Incident", {
   createdAt: __t.timestamp(),
 });
 export type Incident = __Infer<typeof Incident>;
+
+export const IncidentAssignment = __t.object("IncidentAssignment", {
+  incidentId: __t.string(),
+  assignee: __t.identity(),
+  actor: __t.identity(),
+  reason: __t.string(),
+  at: __t.timestamp(),
+});
+export type IncidentAssignment = __Infer<typeof IncidentAssignment>;
 
 export const IncidentEvent = __t.object("IncidentEvent", {
   id: __t.u64(),
@@ -161,6 +206,25 @@ export const Mission = __t.object("Mission", {
 });
 export type Mission = __Infer<typeof Mission>;
 
+export const MissionParticipation = __t.object("MissionParticipation", {
+  id: __t.string(),
+  missionId: __t.string(),
+  owner: __t.identity(),
+  status: __t.string(),
+  evidenceId: __t.string(),
+  at: __t.timestamp(),
+});
+export type MissionParticipation = __Infer<typeof MissionParticipation>;
+
+export const MonitoringRequest = __t.object("MonitoringRequest", {
+  id: __t.string(),
+  siteId: __t.string(),
+  actor: __t.identity(),
+  reason: __t.string(),
+  at: __t.timestamp(),
+});
+export type MonitoringRequest = __Infer<typeof MonitoringRequest>;
+
 export const MonitoringSite = __t.object("MonitoringSite", {
   id: __t.string(),
   name: __t.string(),
@@ -183,8 +247,14 @@ export type MyAssistance = __Infer<typeof MyAssistance>;
 export const MyEvidence = __t.object("MyEvidence", {});
 export type MyEvidence = __Infer<typeof MyEvidence>;
 
+export const MyExpertReviews = __t.object("MyExpertReviews", {});
+export type MyExpertReviews = __Infer<typeof MyExpertReviews>;
+
 export const MyMedia = __t.object("MyMedia", {});
 export type MyMedia = __Infer<typeof MyMedia>;
+
+export const MyMissionClaims = __t.object("MyMissionClaims", {});
+export type MyMissionClaims = __Infer<typeof MyMissionClaims>;
 
 export const MyObservations = __t.object("MyObservations", {});
 export type MyObservations = __Infer<typeof MyObservations>;
@@ -194,6 +264,9 @@ export type MyRole = __Infer<typeof MyRole>;
 
 export const MyTasks = __t.object("MyTasks", {});
 export type MyTasks = __Infer<typeof MyTasks>;
+
+export const MyValidation = __t.object("MyValidation", {});
+export type MyValidation = __Infer<typeof MyValidation>;
 
 export const Observation = __t.object("Observation", {
   id: __t.string(),
@@ -211,6 +284,12 @@ export const Observation = __t.object("Observation", {
 });
 export type Observation = __Infer<typeof Observation>;
 
+export const OperationsAssignments = __t.object("OperationsAssignments", {});
+export type OperationsAssignments = __Infer<typeof OperationsAssignments>;
+
+export const OperationsDeliveryHistory = __t.object("OperationsDeliveryHistory", {});
+export type OperationsDeliveryHistory = __Infer<typeof OperationsDeliveryHistory>;
+
 export const OperationsEvents = __t.object("OperationsEvents", {});
 export type OperationsEvents = __Infer<typeof OperationsEvents>;
 
@@ -219,6 +298,9 @@ export type OperationsIncidents = __Infer<typeof OperationsIncidents>;
 
 export const OperationsMissions = __t.object("OperationsMissions", {});
 export type OperationsMissions = __Infer<typeof OperationsMissions>;
+
+export const OperationsOutbox = __t.object("OperationsOutbox", {});
+export type OperationsOutbox = __Infer<typeof OperationsOutbox>;
 
 export const Outbox = __t.object("Outbox", {
   id: __t.u64(),
@@ -323,8 +405,14 @@ export type ServiceOutbox = __Infer<typeof ServiceOutbox>;
 export const ServicePolicyAssignments = __t.object("ServicePolicyAssignments", {});
 export type ServicePolicyAssignments = __Infer<typeof ServicePolicyAssignments>;
 
+export const ServiceRuleExecutions = __t.object("ServiceRuleExecutions", {});
+export type ServiceRuleExecutions = __Infer<typeof ServiceRuleExecutions>;
+
 export const ServiceSites = __t.object("ServiceSites", {});
 export type ServiceSites = __Infer<typeof ServiceSites>;
+
+export const ServiceWeatherContext = __t.object("ServiceWeatherContext", {});
+export type ServiceWeatherContext = __Infer<typeof ServiceWeatherContext>;
 
 export const ServiceWeatherPolicies = __t.object("ServiceWeatherPolicies", {});
 export type ServiceWeatherPolicies = __Infer<typeof ServiceWeatherPolicies>;

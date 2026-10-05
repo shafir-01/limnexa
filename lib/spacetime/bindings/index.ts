@@ -34,8 +34,10 @@ import {
 } from "spacetimedb";
 
 // Import all reducer arg schemas
+import AcknowledgeTaskReducer from "./acknowledge_task_reducer";
 import AdvanceIncidentReducer from "./advance_incident_reducer";
 import AppendRevisionReducer from "./append_revision_reducer";
+import ClaimMissionReducer from "./claim_mission_reducer";
 import ClaimOutboxReducer from "./claim_outbox_reducer";
 import CompleteAssistanceReducer from "./complete_assistance_reducer";
 import CompleteDeliveryReducer from "./complete_delivery_reducer";
@@ -54,6 +56,8 @@ import RefreshMonitoringReducer from "./refresh_monitoring_reducer";
 import RegisterMediaReducer from "./register_media_reducer";
 import RegisterSourceReducer from "./register_source_reducer";
 import RequestFhirExportReducer from "./request_fhir_export_reducer";
+import RequestHealthReviewReducer from "./request_health_review_reducer";
+import RequestMonitoringReducer from "./request_monitoring_reducer";
 import ReserveAssistanceReducer from "./reserve_assistance_reducer";
 import ReserveDispatchReducer from "./reserve_dispatch_reducer";
 import RetryDeadDeliveryReducer from "./retry_dead_delivery_reducer";
@@ -67,21 +71,29 @@ import TransitionIncidentReducer from "./transition_incident_reducer";
 // Import all procedure arg schemas
 
 // Import all table schema definitions
+import AvailableMissionsRow from "./available_missions_table";
 import DemoDeliveriesRow from "./demo_deliveries_table";
 import DemoEvidenceRow from "./demo_evidence_table";
 import DemoIncidentsRow from "./demo_incidents_table";
 import DemoMissionsRow from "./demo_missions_table";
 import DemoTasksRow from "./demo_tasks_table";
+import HealthIncidentsRow from "./health_incidents_table";
 import MonitoringSitesRow from "./monitoring_sites_table";
 import MyAssistanceRow from "./my_assistance_table";
 import MyEvidenceRow from "./my_evidence_table";
+import MyExpertReviewsRow from "./my_expert_reviews_table";
 import MyMediaRow from "./my_media_table";
+import MyMissionClaimsRow from "./my_mission_claims_table";
 import MyObservationsRow from "./my_observations_table";
 import MyRoleRow from "./my_role_table";
 import MyTasksRow from "./my_tasks_table";
+import MyValidationRow from "./my_validation_table";
+import OperationsAssignmentsRow from "./operations_assignments_table";
+import OperationsDeliveryHistoryRow from "./operations_delivery_history_table";
 import OperationsEventsRow from "./operations_events_table";
 import OperationsIncidentsRow from "./operations_incidents_table";
 import OperationsMissionsRow from "./operations_missions_table";
+import OperationsOutboxRow from "./operations_outbox_table";
 import PublicDemoEvidenceRow from "./public_demo_evidence_table";
 import PublicDemoIncidentsRow from "./public_demo_incidents_table";
 import ReviewObservationsRow from "./review_observations_table";
@@ -92,13 +104,22 @@ import ServiceEvidenceRow from "./service_evidence_table";
 import ServiceIncidentsRow from "./service_incidents_table";
 import ServiceOutboxRow from "./service_outbox_table";
 import ServicePolicyAssignmentsRow from "./service_policy_assignments_table";
+import ServiceRuleExecutionsRow from "./service_rule_executions_table";
 import ServiceSitesRow from "./service_sites_table";
+import ServiceWeatherContextRow from "./service_weather_context_table";
 import ServiceWeatherPoliciesRow from "./service_weather_policies_table";
 
 /** Type-only namespace exports for generated type groups. */
 
 /** The schema information for all tables in this module. This is defined the same was as the tables would have been defined in the server. */
 const tablesSchema = __schema({
+  availableMissions: __table({
+    name: 'available_missions',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, AvailableMissionsRow),
   demoDeliveries: __table({
     name: 'demo_deliveries',
     indexes: [
@@ -134,6 +155,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, DemoTasksRow),
+  healthIncidents: __table({
+    name: 'health_incidents',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, HealthIncidentsRow),
   monitoringSites: __table({
     name: 'monitoring_sites',
     indexes: [
@@ -155,6 +183,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyEvidenceRow),
+  myExpertReviews: __table({
+    name: 'my_expert_reviews',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyExpertReviewsRow),
   myMedia: __table({
     name: 'my_media',
     indexes: [
@@ -162,6 +197,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyMediaRow),
+  myMissionClaims: __table({
+    name: 'my_mission_claims',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyMissionClaimsRow),
   myObservations: __table({
     name: 'my_observations',
     indexes: [
@@ -183,6 +225,27 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyTasksRow),
+  myValidation: __table({
+    name: 'my_validation',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyValidationRow),
+  operationsAssignments: __table({
+    name: 'operations_assignments',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, OperationsAssignmentsRow),
+  operationsDeliveryHistory: __table({
+    name: 'operations_delivery_history',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, OperationsDeliveryHistoryRow),
   operationsEvents: __table({
     name: 'operations_events',
     indexes: [
@@ -204,6 +267,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, OperationsMissionsRow),
+  operationsOutbox: __table({
+    name: 'operations_outbox',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, OperationsOutboxRow),
   publicDemoEvidence: __table({
     name: 'public_demo_evidence',
     indexes: [
@@ -274,6 +344,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, ServicePolicyAssignmentsRow),
+  serviceRuleExecutions: __table({
+    name: 'service_rule_executions',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ServiceRuleExecutionsRow),
   serviceSites: __table({
     name: 'service_sites',
     indexes: [
@@ -281,6 +358,13 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, ServiceSitesRow),
+  serviceWeatherContext: __table({
+    name: 'service_weather_context',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ServiceWeatherContextRow),
   serviceWeatherPolicies: __table({
     name: 'service_weather_policies',
     indexes: [
@@ -292,8 +376,10 @@ const tablesSchema = __schema({
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
+  __reducerSchema("acknowledge_task", AcknowledgeTaskReducer),
   __reducerSchema("advance_incident", AdvanceIncidentReducer),
   __reducerSchema("append_revision", AppendRevisionReducer),
+  __reducerSchema("claim_mission", ClaimMissionReducer),
   __reducerSchema("claim_outbox", ClaimOutboxReducer),
   __reducerSchema("complete_assistance", CompleteAssistanceReducer),
   __reducerSchema("complete_delivery", CompleteDeliveryReducer),
@@ -312,6 +398,8 @@ const reducersSchema = __reducers(
   __reducerSchema("register_media", RegisterMediaReducer),
   __reducerSchema("register_source", RegisterSourceReducer),
   __reducerSchema("request_fhir_export", RequestFhirExportReducer),
+  __reducerSchema("request_health_review", RequestHealthReviewReducer),
+  __reducerSchema("request_monitoring", RequestMonitoringReducer),
   __reducerSchema("reserve_assistance", ReserveAssistanceReducer),
   __reducerSchema("reserve_dispatch", ReserveDispatchReducer),
   __reducerSchema("retry_dead_delivery", RetryDeadDeliveryReducer),

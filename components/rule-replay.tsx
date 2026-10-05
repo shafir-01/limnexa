@@ -1,0 +1,4 @@
+'use client';
+import {useState} from 'react';
+import {useSpacetimeDB} from 'spacetimedb/react';
+export function RuleReplay({traceId}:{traceId:string}){const {token}=useSpacetimeDB(),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);return <div><button className="quiet-button" disabled={busy} onClick={async()=>{setBusy(true);try{const response=await fetch(`/api/rules/replay/${traceId}`,{headers:token?{authorization:`Bearer ${token}`}:{}});if(!response.ok)throw new Error('Unavailable');const result=await response.json();setMessage(result.reproduced?'Historical decision reproduced from immutable inputs, stored policy, and original execution time.':'Replay differs from the stored trace. Inspect the rule version before interpreting this result.')}catch{setMessage('Replay is unavailable. The stored decision record remains visible.')}finally{setBusy(false)}}}>Replay stored policy</button>{message&&<p role="status" className="small">{message}</p>}</div>}

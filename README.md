@@ -1,19 +1,47 @@
 # Limnexa
 
-Limnexa is an evidence-to-action build for urban freshwater monitoring. It separates citizen observations from deterministic rule decisions and shows a **fully synthetic** investigation scenario. The synthetic observations and incident are stored in SpacetimeDB Maincloud, not frontend fixtures.
+Traceable freshwater evidence, deterministic investigation routing, accountable intervention, and targeted follow-up. The public demonstration is entirely synthetic. Its source reports, instrument reading, weather context, rules, and incidents are stored in SpacetimeDB Maincloud and created through authoritative reducers.
 
-## Run locally
+## Run
 
-Node 20.9 or newer is required. Run `npm install`, `npm run dev`, then open `http://localhost:3000`. The app connects to `limnexa-jltls` on Maincloud by default. Run `npm run typecheck`, `npm test`, and `npm run build` to check this build. The module is in `spacetimedb/spacetimedb`; build it with `spacetime build --module-path spacetimedb/spacetimedb`.
+Use Node 24 and `npm ci`. Copy `.env.example` to ignored `.env.local`, configure the preview database and its restricted service identity, then run `npm run dev`. On this Windows workspace the authenticated CLIs and ignored runtime files are already provisioned; `npx tsx scripts/prepare-local.ts` selects preview safely. Never commit an environment file or use the owner token as a server credential.
 
-## Current scope
+- Production database: `limnexa-jltls`
+- Preview database: `limnexa-jltls-preview`
+- Isolated Actions database: `limnexa-jltls-ci`
+- GitHub: https://github.com/shafir-01/limnexa
+- Deployment URLs and final verification evidence: `docs/BUILD_RESULT.md`
 
-The synthetic scenario was seeded through the authoritative `seed_demo` reducer. Private tables store observations, incidents, transitions, missions, roles, and outbox messages; public views expose only sanitized synthetic data. The citizen form preserves an offline draft and submits typed observations through a reducer when connected. Browser identities persist through a locally stored SpacetimeDB token. The demo-only rule cannot open a real-world incident from citizen reports.
+## Product
 
-Officer authentication UI, durable outbox dispatch, media, AI, voice, FHIR validation/delivery, and complete deployment verification are still incomplete. Public operations views are read-only; only owner or granted officer identities can transition incidents. The interface labels these boundaries rather than presenting them as operational.
+- Mobile reporting with actual GPS accuracy, optional declared instrument readings, immutable originals, and append-only corrections.
+- IndexedDB drafts and private media queues, installed offline report shell, stable submission IDs, reconnect and retry recovery.
+- Ten explicit trust dimensions, enrolled source lineage, copied-media independence checks, sourced versioned policies, deterministic rule traces and historical replay.
+- Officer acknowledgement, recorded findings, intervention, independent post-action evidence, expert verification, and accountable closure. Ecological evidence routes separately to scientist responsibility.
+- Claimed monitoring missions, evidence-gap rationale, contributor quality/review feedback and professional responsibility inboxes.
+- Private Blob upload authorization, image re-encoding to remove metadata, server signature/hash/metadata checks, and authenticated retrieval.
+- Optional Gateway classification and visible-feature image triage with explicit confirmation boundaries, rate limits and persistent invocation audits.
+- ElevenLabs realtime transcription and fixed spoken protocol guidance with complete typed fallback.
+- Transactional outbox, atomic launch reservation, durable Workflow steps, retry/dead delivery status, idempotent inbox/FHIR delivery, and acknowledgement SLA audit.
+- FHIR R4 evidence/provenance packets targeting pinned draft OneAquaHealth profiles; official positive and negative validator gates.
 
-## Activation requirements
+## Verify
 
-The SpacetimeDB CLI is installed locally and its module has been published to the existing Maincloud database. The Vercel CLI is installed and the app is linked to the existing `shafir-2f05a117/limnexa` project. Configure runtime secrets before activating external flows. Rotate the previously exposed ElevenLabs credential before using voice. See `.env.example`; never put secret values in the repository.
+```text
+npm run lint
+npm run typecheck
+npm test
+npm run test:integration
+npm run validate:fhir
+npm run build
+npm run test:e2e
+npm audit --omit=dev --audit-level=high
+```
 
-The full target and acceptance criteria are in `../LIMNEXA_AGENT_BUILD_PROMPT.md`. This repository does not yet meet that specification's definition of done.
+Integration tests refuse to mutate the production database. Browser CI uses the compiled production app and isolated CI identities; live private Blob verification is an explicit release check. Test results are recorded in `docs/validation`. Java 21 is required for the checksum-pinned official HL7 validator. The checked-in lockfile fixes the dependency graph.
+
+## Configure external services
+
+Voice requires a newly rotated `ELEVENLABS_API_KEY`; spoken guidance additionally needs `ELEVENLABS_VOICE_ID`. No historical exposed key is used. FHIR delivery requires an authorized HTTPS `FHIR_DESTINATION_URL` and optional server-only token. Neither missing service blocks reporting, rules, investigation, or downloadable validated FHIR packets. Real rule activation requires administrator-configured canonical sites, enrolled source lineages, and an immutable sourced local policy; synthetic demo parameters are not environmental standards.
+
+See [architecture](docs/ARCHITECTURE.md), [domain model](docs/DOMAIN_MODEL.md), [threat model](docs/THREAT_MODEL.md), [runbook](docs/OPERATIONS_RUNBOOK.md), [demo script](docs/DEMO_SCRIPT.md), and [exact FHIR target](docs/FHIR_TARGET.md).

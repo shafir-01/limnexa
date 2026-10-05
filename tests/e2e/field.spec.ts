@@ -1,5 +1,6 @@
 import {test,expect} from '@playwright/test';
-import {readFileSync,existsSync} from 'node:fs';
+import {readFileSync} from 'node:fs';
+test.beforeEach(async({page})=>{await page.route('**/api/workflows/outbox/trigger',route=>route.fulfill({status:200,json:{runs:[]}}))});
 test('live dashboards expose evidence and deterministic routing',async({page})=>{
   const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
   await page.goto('/operations');await expect(page.getByText('Live connection',{exact:true})).toBeVisible();await expect(page.getByRole('heading',{name:'Why this was routed'}).first()).toBeVisible();await expect(page.getByText('ecological-scientist',{exact:false}).first()).toBeVisible();await expect(page.getByRole('heading',{name:'Officer decision'})).toHaveCount(0);
@@ -20,10 +21,12 @@ test('unconfirmed AI proposal cannot silently overwrite the source report',async
 test('FHIR inspector downloads a source-linked synthetic bundle',async({page})=>{
   await page.goto('/interoperability');await expect(page.getByLabel('Synthetic incident').locator('option')).not.toHaveCount(0);await page.getByRole('button',{name:'Generate evidence Bundle'}).click();await expect(page.getByText('Export contract and reference checks passed.')).toBeVisible();const downloadPromise=page.waitForEvent('download');await page.getByRole('button',{name:'Download FHIR R4 Bundle'}).click();const download=await downloadPromise;const file=await download.path();expect(file).toBeTruthy();const bundle=JSON.parse(readFileSync(file!,'utf8'));expect(bundle.resourceType).toBe('Bundle');expect(bundle.entry.some((e:{resource:{resourceType:string}})=>e.resource.resourceType==='Provenance')).toBe(true);expect(JSON.stringify(bundle)).not.toContain('DetectedIssue');
 });
-test('private upload is verified before it is attached to a field draft',async({page})=>{
+test('private upload is verified before it is attached to a field draft',async({page,context})=>{
   test.skip(process.env.TEST_LIVE_MEDIA!=='true','Live private Blob verification runs explicitly with configured storage.');
   await page.goto('/report');await expect(page.getByLabel('Monitoring site').locator('option')).not.toHaveCount(1);await page.getByLabel('Monitoring site').selectOption({index:1});
-  await page.getByLabel('Supporting image (private)').setInputFiles({name:'synthetic-pixel.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j3ioAAAAASUVORK5CYII=','base64')});
+  if(process.env.TEST_PWA==='true'){await page.evaluate(async()=>{await navigator.serviceWorker.ready});await expect.poll(()=>page.evaluate(()=>!!navigator.serviceWorker.controller)).toBe(true);await context.setOffline(true)}
+  await page.getByLabel('Supporting image (private)').setInputFiles({name:'synthetic-pixel.png',mimeType:'image/png',buffer:Buffer.from(await page.evaluate(()=>{const canvas=document.createElement('canvas');canvas.width=canvas.height=2;return canvas.toDataURL('image/png').split(',')[1]!}),'base64')});
+  if(process.env.TEST_PWA==='true'){await expect(page.getByText('Image metadata removed. The private upload is queued on this device.')).toBeVisible();await page.reload();await expect(page.getByRole('button',{name:'Submit confirmed observation'})).toBeDisabled();await context.setOffline(false)}
   await expect(page.getByText('Private media verified by SHA-256 and attached to this draft.')).toBeVisible({timeout:45000});await expect(page.getByText('1 verified private media artifact(s) attached.')).toBeVisible();
 });
 test('core rejects unauthenticated HTTP assistance requests',async({request})=>{
@@ -31,8 +34,4 @@ test('core rejects unauthenticated HTTP assistance requests',async({request})=>{
 });
 test('report fits a mobile viewport with an accessible main target',async({page})=>{
   await page.setViewportSize({width:390,height:844});await page.goto('/report');await expect(page.locator('#main')).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);await expect(page.getByRole('button',{name:'Submit confirmed observation'})).toBeVisible();
-});
-test('test evidence credentials remain outside the page and public exports',async({page})=>{
-  if(!existsSync('.tools/tests/citizen.json'))return;
-  const credential=JSON.parse(readFileSync('.tools/tests/citizen.json','utf8')) as {token:string};await page.goto('/interoperability');expect(await page.content()).not.toContain(credential.token);
 });

@@ -1,0 +1,6 @@
+'use client';
+import {useState} from 'react';
+import {useReducer,useTable} from 'spacetimedb/react';
+import {reducers,tables} from '@/lib/spacetime/bindings';
+function Acknowledge({id}:{id:string}){const acknowledge=useReducer(reducers.acknowledgeTask),[reason,setReason]=useState(''),[message,setMessage]=useState('');return <div><label htmlFor={`ack-${id}`}>Responsibility acknowledgement reason</label><input id={`ack-${id}`} value={reason} onChange={e=>setReason(e.target.value)} maxLength={1000}/><button className="quiet-button" disabled={!reason.trim()} onClick={async()=>{try{await acknowledge({idempotencyKey:id,reason});setMessage('Responsibility acknowledgement recorded. Incident decisions remain a separate officer action.')}catch{setMessage('Acknowledgement rejected. Check your assigned responsibility.')}}}>Acknowledge responsibility</button>{message&&<p role="status">{message}</p>}</div>}
+export function ResponsibilityInbox(){const [tasks]=useTable(tables.myTasks);return tasks.length?<section><h2>My responsibility inbox</h2>{tasks.map(t=><article className="card" key={t.idempotencyKey}><p>{t.route} · {t.incidentId} · {t.status}{t.synthetic?' · synthetic':''}</p>{t.status==='available'&&<Acknowledge id={t.idempotencyKey}/>}</article>)}</section>:null}
