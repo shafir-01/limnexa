@@ -10,9 +10,9 @@ export async function POST(request:Request){
   if(!process.env.ELEVENLABS_API_KEY||!process.env.ELEVENLABS_VOICE_ID)return Response.json({error:'VOICE_UNAVAILABLE',traceId},{status:503});
   let id:string;try{id=await reserve(identity,'voice-guidance','eleven_multilingual_v2',{topic:input.data.topic,protocolVersion:'field-v1'})}catch{return Response.json({error:'ASSISTANCE_LIMIT_OR_SERVICE_UNAVAILABLE',traceId},{status:429})}
   try{
-    const client=new ElevenLabsClient({apiKey:process.env.ELEVENLABS_API_KEY});
-    const audio=await client.textToSpeech.convert(process.env.ELEVENLABS_VOICE_ID,{text:protocolGuidance[input.data.topic],modelId:'eleven_multilingual_v2',outputFormat:'mp3_44100_128'},{timeoutInSeconds:20,maxRetries:0});
-    await finish(id,'completed',{provider:'elevenlabs',topic:input.data.topic,protocolVersion:'field-v1',schemaVersion:'fixed-guidance-v1'});
+    const client=new ElevenLabsClient({apiKey:process.env.ELEVENLABS_API_KEY}),modelId=process.env.ELEVENLABS_MODEL_ID||'eleven_flash_v2_5';
+    const audio=await client.textToSpeech.convert(process.env.ELEVENLABS_VOICE_ID,{text:protocolGuidance[input.data.topic],modelId,outputFormat:'mp3_44100_128'},{timeoutInSeconds:20,maxRetries:0});
+    await finish(id,'completed',{provider:'elevenlabs',model:modelId,topic:input.data.topic,protocolVersion:'field-v1',schemaVersion:'fixed-guidance-v1'});
     return new Response(audio,{headers:{'content-type':'audio/mpeg','cache-control':'no-store'}});
   }catch{await finish(id,'unavailable',{code:'VOICE_UNAVAILABLE'}).catch(()=>{});return Response.json({error:'VOICE_UNAVAILABLE',traceId},{status:503})}
 }

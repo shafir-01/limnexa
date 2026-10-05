@@ -89,7 +89,7 @@ npm run dev
 | `BLOB_READ_WRITE_TOKEN` | Private Blob upload and retrieval | Media capture |
 | `CRON_SECRET` | Scheduled outbox dispatch authentication | Daily monitoring sweep |
 | `AI_GATEWAY_API_KEY` | Non-authoritative AI proposal calls | Controlled assistance services |
-| `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID` | Transcription and fixed spoken guidance | Voice assistance |
+| `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`, `ELEVENLABS_MODEL_ID` | Transcription and fixed spoken guidance | Voice assistance |
 | `FHIR_DESTINATION_URL`, `FHIR_DESTINATION_TOKEN` | Authorized external receiver | Controlled FHIR exchange |
 
 See [.env.example](.env.example) for the complete non-secret schema.
