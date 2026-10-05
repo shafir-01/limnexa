@@ -4,7 +4,7 @@ test.beforeEach(async({page})=>{await page.route('**/api/workflows/outbox/trigge
 test('live dashboards expose evidence and deterministic routing',async({page})=>{
   const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
   await page.goto('/operations');await expect(page.getByText('Live connection',{exact:true})).toBeVisible();await expect(page.getByRole('heading',{name:'Why this was routed'}).first()).toBeVisible();await expect(page.getByText('ecological-scientist',{exact:false}).first()).toBeVisible();await expect(page.getByRole('heading',{name:'Officer decision'})).toHaveCount(0);
-  await page.getByRole('link',{name:'Evidence',exact:true}).click();await expect(page.getByRole('heading',{name:'Evidence ledger'})).toBeVisible();await page.getByText('Trust dimensions and provenance').first().click();await expect(page.getByText('provenance completeness',{exact:true}).first()).toBeVisible();expect(errors).toEqual([]);
+  await page.getByRole('link',{name:'Evidence',exact:true}).click();await expect(page.getByRole('heading',{name:'Evidence',exact:true})).toBeVisible();await page.getByText('Trust',{exact:true}).first().click();await expect(page.getByText('provenance completeness',{exact:true}).first()).toBeVisible();expect(errors).toEqual([]);
 });
 test('typed draft survives reload and an AI outage without fabricated values',async({page})=>{
   await page.goto('/report');await expect(page.getByLabel('Monitoring site')).toBeVisible();await expect(page.getByLabel('Monitoring site').locator('option')).not.toHaveCount(1);
