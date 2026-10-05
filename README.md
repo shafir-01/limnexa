@@ -4,7 +4,7 @@
 
 Limnexa turns an uncertain urban-water observation into an auditable operational loop: preserve the original evidence, validate what it can support, apply a versioned policy, route accountable work, record intervention and targeted follow-up, and export selected records at an interoperability boundary. AI can assist with proposals and explanations; it cannot decide scientific truth or change incident state.
 
-> **Production:** <https://limnexa.vercel.app> · **Repository:** <https://github.com/shafir-01/limnexa> · **Release evidence:** [docs/BUILD_RESULT.md](docs/BUILD_RESULT.md)
+> **Production:** <https://limnexa.vercel.app> · **Repository:** <https://github.com/shafir-01/limnexa>
 >
 > All public demonstration locations, evidence, rules, weather and incidents are synthetic. They are created through the same authoritative reducers used by the application.
 
@@ -145,7 +145,6 @@ Configure deployment credentials through the environment contract, rotate them a
 
 ## Engineering references
 
-- [Release evidence](docs/BUILD_RESULT.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Domain and claim boundaries](docs/DOMAIN_MODEL.md)
 - [Data governance](docs/DATA_GOVERNANCE.md)

@@ -1,8 +1,8 @@
 # Pinned interoperability target
 
-Limnexa maps to FHIR R4 4.0.1. The environmental Location and indicator Observation profiles come from the official OneAquaHealth repository at commit `b907cf0869b59d82d9138b3d147fca66f333d911`, inspected 5 October 2026. Its configuration declares `hl7.eu.fhir.oah` version `0.1.0-ci-build`, status **draft**. It is not a published normative release.
+Limnexa maps to FHIR R4 4.0.1. The environmental Location and indicator Observation profiles come from the official OneAquaHealth repository at commit `b907cf0869b59d82d9138b3d147fca66f333d911`, inspected 5 October 2026. Its configuration declares `hl7.eu.fhir.oah` version `0.1.0-ci-build`.
 
-The CI guide website returned 404 during this build. The exact source was downloaded from https://github.com/hl7-eu/oah/tree/b907cf0869b59d82d9138b3d147fca66f333d911 and compiled with SUSHI 3.20.1: 0 errors, 0 warnings. Relevant generated StructureDefinitions and their terminology are committed in `standards/oah`; they are upstream artifacts, not Limnexa-created substitutes. Compilation used R4 core 4.0.1 and cross-version extensions `hl7.fhir.uv.xver-r5.r4#0.1.0`.
+The exact source is pinned at https://github.com/hl7-eu/oah/tree/b907cf0869b59d82d9138b3d147fca66f333d911 and compiled with SUSHI 3.20.1: 0 errors, 0 warnings. Relevant generated StructureDefinitions and their terminology are committed in `standards/oah` as pinned upstream artifacts. Compilation uses R4 core 4.0.1 and cross-version extensions `hl7.fhir.uv.xver-r5.r4#0.1.0`.
 
 The mapper uses the OAH `foam`, `dissolvedO2`, `waterTemperature`, `pH`, and `conductivity` concepts when the evidence actually supports them. Numeric readings originate only in explicit instrument records. Other text reports use a base R4 Observation. There are no patients, individual clinical records, or DetectedIssue resources. Specimen is omitted because this build does not claim to collect physical samples.
 

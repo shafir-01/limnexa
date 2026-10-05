@@ -16,7 +16,7 @@ Real site configuration, source enrollment and local scientific policy activatio
 
 `.env.example` enumerates supported settings. Vercel stores production/preview secrets separately. `scripts/provision-service.ts DATABASE preview|production` creates a new restricted service identity and ignored environment file; `scripts/sync-runtime.ts preview|production` uploads it via stdin. Revoke the old service identity with an owner role grant to citizen after replacing the deployed credential. Rotate CRON_SECRET with the service environment. Private Blob credentials remain server-only.
 
-A historical ElevenLabs key was exposed outside this repository. Revoke it in ElevenLabs, issue a fresh restricted key, and set ELEVENLABS_API_KEY in the intended Vercel environments. Set an authorized ELEVENLABS_VOICE_ID for guidance. Redeploy and test transcription and guidance once; never reuse the historical value. No key is committed here.
+Manage ElevenLabs access through a restricted service key and an authorized voice identifier in the intended Vercel environments. Rotate credentials through the provider's workspace controls, redeploy, and verify transcription and guidance after each rotation. No credential is committed to this repository.
 
 Set an authorized HTTPS FHIR_DESTINATION_URL (FHIR server base) and optional FHIR_DESTINATION_TOKEN. Delivery uses PUT `Bundle/{id}` and an idempotency key. Confirm that the receiver permits this Bundle type/profiles before activation. No receiving endpoint is invented. Downloads and official local validation work without an external receiver.
 

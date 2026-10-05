@@ -34,4 +34,4 @@ Open Synthetic Reach B from the same prepared suffix. Its declared dissolved-oxy
 
 ## 3:50 ? resilience and architecture
 
-Show persisted IndexedDB drafts, private media, scoped views, deterministic reducer truth, transactional outbox, reserved durable runs and delivery idempotency. Turn AI/voice off: typed reporting and displayed protocol remain. Show health configuration and release evidence rather than claiming an unconfigured receiver or key is live.
+Show persisted IndexedDB drafts, private media, scoped views, deterministic reducer truth, transactional outbox, reserved durable runs and delivery idempotency. Demonstrate that typed reporting and displayed protocol preserve the field workflow through service interruption. Show health and delivery status as separate operational surfaces.
