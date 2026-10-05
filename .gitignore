@@ -4,3 +4,13 @@ node_modules/
 !.env.example
 *.tsbuildinfo
 .npm-cache/
+.tools/
+.vercel/
+spacetimedb/spacetime.local.json
+spacetimedb/spacetimedb/node_modules/
+spacetimedb/spacetimedb/dist/
+spacetimedb/.cursor/
+spacetimedb/.github/
+spacetimedb/.windsurfrules
+spacetimedb/CLAUDE.md
+spacetimedb/AGENTS.md
